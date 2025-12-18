@@ -63,3 +63,186 @@ OSPF имеет следующие преимущества:
 - Поддержка сетевых масок переменной длины (VLSM);
 - Оптимальное использование пропускной способности с построением дерева кратчайших путей.
 
+</details>
+
+### Выполнение:
+
+Произведем начальную настройку коммутаторов, в которой выполним команды конфигурирования адресного пространства:
+<details>
+  
+#### Spine 1
+```
+hostname Spine1
+!
+interface Ethernet1
+   no switchport
+   ip address 10.2.1.1/30
+!
+interface Ethernet2
+   no switchport
+   ip address 10.2.1.5/30
+!
+interface Ethernet3
+   no switchport
+   ip address 10.2.1.9/30
+!
+interface Loopback0
+   ip address 10.0.1.1/32
+!
+```
+#### Spine 2
+```
+hostname Spine2
+!
+interface Ethernet1
+   no switchport
+   ip address 10.2.2.1/30
+!
+interface Ethernet2
+   no switchport
+   ip address 10.2.2.5/30
+!
+interface Ethernet3
+   no switchport
+   ip address 10.2.2.9/30
+!
+interface Loopback0
+   ip address 10.0.2.1/32
+!
+```
+#### Leaf 1
+```
+hostname Leaf1
+!
+interface Ethernet1
+   no switchport
+   ip address 10.2.1.2/30
+!
+interface Ethernet2
+   no switchport
+   ip address 10.2.2.2/30
+!
+interface Ethernet3
+   no switchport
+   ip address 192.168.1.1/24
+!
+interface Loopback0
+   ip address 10.1.1.1/32
+!
+```
+
+#### Leaf 2
+```
+hostname Leaf2
+!
+interface Ethernet1
+   no switchport
+   ip address 10.2.1.6/30
+!
+interface Ethernet2
+   no switchport
+   ip address 10.2.2.6/30
+!
+interface Ethernet3
+   no switchport
+   ip address 192.168.2.1/24
+!
+interface Loopback0
+   ip address 10.1.2.1/32
+!
+```
+
+#### Leaf 3
+```
+hostname Leaf3
+!
+interface Ethernet1
+   no switchport
+   ip address 10.2.1.10/30
+!
+interface Ethernet2
+   no switchport
+   ip address 10.2.2.10/30
+!
+interface Ethernet3
+   no switchport
+   ip address 192.168.3.1/24
+!
+interface Ethernet4
+   no switchport
+   ip address 192.168.4.1/24
+!
+interface Loopback0
+   ip address 10.1.3.1/32
+!
+```
+#### Client 1
+```
+VPCS> ip 192.168.1.100 255.255.255.0 192.168.1.1
+```
+#### Client 2
+```
+VPCS> ip 192.168.2.100 255.255.255.0 192.168.2.1
+```
+#### Client 3
+```
+VPCS> ip 192.168.3.100 255.255.255.0 192.168.3.1
+```
+#### Client 4
+```
+VPCS> ip 192.168.4.100 255.255.255.0 192.168.4.1
+```
+</details>
+
+Нам необходимо настроить сеть таким образом, чтобы Клиенты видели друг друга и могли передавать траффик. Так же предположим для примера в данной лабораторной работе, что нам необходимо защитить паролем линк от Leaf 1 до Spine 1 с помощью аутентификации, для того чтобы исключить возможность подключению сторонних сетевых устройств. 
+
+В данной лабораторной работе будем использовать протокол динамической маршрутизации OSPF.
+
+Протокол OSPF является мультизональным протоколом. Однако в данном случае ограничимся одной зоной(магистральной), в которую поместим все коммутаторы, так как разделения на зоны здесь является избыточным.
+
+Протокол OSPF является протоколом типа Link-State с выбором сетевых устройств с ролями DR и BDR, в которых хранится Link State Database (LSDB) — общую базу топологии сети для всей multiaccess-сети (LAN). Без DR каждый роутер устанавливал бы full adjacency со всеми, что перегружает сеть. Поскольку наша зона делится на сегменты сети состоящих из p2p линков, мы можем обойтись без DR и BRD.
+
+Так же для избежния конфликтов везде устоновим mtu равным 1500.
+
+#### Leaf 1
+```
+interface Ethernet1
+   no switchport
+   mtu 1500
+   ip address 10.2.1.2/30
+   ip ospf neighbor bfd
+   ip ospf priority 0
+   ip ospf network point-to-point
+   ip ospf authentication message-digest
+   ip ospf area 0.0.0.0
+   ip ospf message-digest-key 1 md5 7 f0x3GerlAiU=
+!
+interface Ethernet2
+   no switchport
+   mtu 1500
+   ip address 10.2.2.2/30
+   ip ospf neighbor bfd
+   ip ospf network point-to-point
+   ip ospf area 0.0.0.0
+!
+interface Ethernet3
+   no switchport
+   ip address 192.168.1.1/24
+   ip ospf area 0.0.0.0
+!
+interface Loopback0
+   ip address 10.1.1.1/32
+   ip ospf area 0.0.0.0
+!
+ip routing
+!
+router ospf 1
+   router-id 10.1.1.1
+   auto-cost reference-bandwidth 40000
+   passive-interface default
+   no passive-interface Ethernet1
+   no passive-interface Ethernet2
+   log-adjacency-changes
+   max-lsa 12000
+!
+```
