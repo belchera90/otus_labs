@@ -199,11 +199,29 @@ VPCS> ip 192.168.4.100 255.255.255.0 192.168.4.1
 В данной лабораторной работе будем использовать протокол динамической маршрутизации OSPF.
 
 Протокол OSPF является мультизональным протоколом. Однако в данном случае ограничимся одной зоной(магистральной), в которую поместим все коммутаторы, так как разделения на зоны здесь является избыточным.
+```
+   ip ospf area 0.0.0.0
+```
 
-Протокол OSPF является протоколом типа Link-State с выбором сетевых устройств с ролями DR и BDR, в которых хранится Link State Database (LSDB) — общую базу топологии сети для всей multiaccess-сети (LAN). Без DR каждый роутер устанавливал бы full adjacency со всеми, что перегружает сеть. Поскольку наша зона делится на сегменты сети состоящих из p2p линков, мы можем обойтись без DR и BRD.
+Протокол OSPF является протоколом типа Link-State с выбором сетевых устройств с ролями DR и BDR, в которых хранится Link State Database (LSDB) — общую базу топологии сети для всей multiaccess-сети (LAN). Без DR каждый роутер устанавливал бы full adjacency со всеми, что перегружает сеть. Поскольку наша зона делится на сегменты сети состоящих из p2p линков, мы можем обойтись без DR и BRD. Обозначим нашу сеть как point-to-point.
+```
+   ip ospf network point-to-point
+```
 
-Так же для избежния конфликтов везде устоновим mtu равным 1500.
+Так же для избежния конфликтов везде установим mtu равным 1500, а для быстрого обнаружения проблем на линках включим протокол BFD.
+```
+  ip ospf neighbor bfd
+```
 
+На оконечных сетевых интерфейсах линка между Spine1 и Leaf1 настроем аутентифиукацмю по паролю.
+```
+   ip ospf authentication message-digest
+   ip ospf message-digest-key 1 md5 7 f0x3GerlAiU=
+```
+
+Таким образом, итоговые конфигурации коммуторов будут выглядеть так:
+
+<details>
 #### Leaf 1
 ```
 interface Ethernet1
@@ -211,7 +229,6 @@ interface Ethernet1
    mtu 1500
    ip address 10.2.1.2/30
    ip ospf neighbor bfd
-   ip ospf priority 0
    ip ospf network point-to-point
    ip ospf authentication message-digest
    ip ospf area 0.0.0.0
@@ -227,7 +244,10 @@ interface Ethernet2
 !
 interface Ethernet3
    no switchport
+   mtu 1500
    ip address 192.168.1.1/24
+   ip ospf neighbor bfd
+   ip ospf network point-to-point
    ip ospf area 0.0.0.0
 !
 interface Loopback0
@@ -246,3 +266,14 @@ router ospf 1
    max-lsa 12000
 !
 ```
+
+</details>
+
+После настройки на сетевых устройствах протокола маршрутизации проверим результаты.
+ Пробуем с Client1 "достучаться" до Client2, Client3 и Client4:
+
+ Как видим Client1 видит других клиентов.
+
+ Далее посмотрим OSPF соседей на спайнах:
+
+ Так же проверим Route Table на каждом коммутаторе:
