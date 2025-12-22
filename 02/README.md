@@ -264,7 +264,7 @@ interface Loopback0
 ip routing
 !
 router ospf 1
-   router-id 10.1.1.1
+   router-id 10.0.1.1
    auto-cost reference-bandwidth 40000
    passive-interface default
    no passive-interface Ethernet1
@@ -311,7 +311,7 @@ interface Loopback0
 ip routing
 !
 router ospf 1
-   router-id 10.1.2.1
+   router-id 10.0.2.1
    auto-cost reference-bandwidth 40000
    passive-interface default
    no passive-interface Ethernet1
@@ -453,7 +453,7 @@ interface Loopback0
 ip routing
 !
 router ospf 1
-   router-id 10.1.1.1
+   router-id 10.1.3.1
    auto-cost reference-bandwidth 40000
    passive-interface default
    no passive-interface Ethernet1
