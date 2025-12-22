@@ -337,7 +337,7 @@ interface Ethernet1
 interface Ethernet2
    no switchport
    mtu 1500
-   ip address 10.2.1.2/30
+   ip address 10.2.2.2/30
    ip ospf neighbor bfd
    ip ospf network point-to-point
    ip ospf area 0.0.0.0
