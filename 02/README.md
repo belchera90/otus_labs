@@ -69,6 +69,8 @@ OSPF имеет следующие преимущества:
 
 Произведем начальную настройку коммутаторов, в которой выполним команды конфигурирования адресного пространства:
 <details>
+
+<summary> Начальная настройка </summary>
   
 #### Spine 1
 ```
@@ -222,6 +224,104 @@ VPCS> ip 192.168.4.100 255.255.255.0 192.168.4.1
 Таким образом, итоговые конфигурации коммуторов будут выглядеть так:
 
 <details>
+
+<summary> Итоговая конфигурация </summary>
+  
+
+#### Spine 1
+```
+interface Ethernet1
+   no switchport
+   mtu 1500
+   ip address 10.2.1.1/30
+   ip ospf neighbor bfd
+   ip ospf priority 0
+   ip ospf network point-to-point
+   ip ospf authentication message-digest
+   ip ospf area 0.0.0.0
+   ip ospf message-digest-key 1 md5 7 f0x3GerlAiU=
+!
+interface Ethernet2
+   no switchport
+   mtu 1500
+   ip address 10.2.1.5/30
+   ip ospf neighbor bfd
+   ip ospf network point-to-point
+   ip ospf area 0.0.0.0
+!
+interface Ethernet3
+   no switchport
+   mtu 1500
+   ip address 10.2.1.9/30
+   ip ospf neighbor bfd
+   ip ospf network point-to-point
+   ip ospf area 0.0.0.0
+!
+interface Loopback0
+   ip address 10.0.1.1/32
+   ip ospf area 0.0.0.0
+!
+ip routing
+!
+router ospf 1
+   router-id 10.1.1.1
+   auto-cost reference-bandwidth 40000
+   passive-interface default
+   no passive-interface Ethernet1
+   no passive-interface Ethernet2
+   no passive-interface Ethernet3
+   log-adjacency-changes
+   max-lsa 12000
+!
+```
+
+#### Spine 2
+```
+interface Ethernet1
+   no switchport
+   mtu 1500
+   ip address 10.2.2.1/30
+   ip ospf neighbor bfd
+   ip ospf priority 0
+   ip ospf network point-to-point
+   ip ospf authentication message-digest
+   ip ospf area 0.0.0.0
+   ip ospf message-digest-key 1 md5 7 f0x3GerlAiU=
+!
+interface Ethernet2
+   no switchport
+   mtu 1500
+   ip address 10.2.2.5/30
+   ip ospf neighbor bfd
+   ip ospf network point-to-point
+   ip ospf area 0.0.0.0
+!
+interface Ethernet3
+   no switchport
+   mtu 1500
+   ip address 10.2.2.9/30
+   ip ospf neighbor bfd
+   ip ospf network point-to-point
+   ip ospf area 0.0.0.0
+!
+interface Loopback0
+   ip address 10.0.2.1/32
+   ip ospf area 0.0.0.0
+!
+ip routing
+!
+router ospf 1
+   router-id 10.1.2.1
+   auto-cost reference-bandwidth 40000
+   passive-interface default
+   no passive-interface Ethernet1
+   no passive-interface Ethernet2
+   no passive-interface Ethernet3
+   log-adjacency-changes
+   max-lsa 12000
+!
+```
+
 #### Leaf 1
 ```
 interface Ethernet1
@@ -237,7 +337,7 @@ interface Ethernet1
 interface Ethernet2
    no switchport
    mtu 1500
-   ip address 10.2.2.2/30
+   ip address 10.2.1.2/30
    ip ospf neighbor bfd
    ip ospf network point-to-point
    ip ospf area 0.0.0.0
@@ -266,14 +366,134 @@ router ospf 1
    max-lsa 12000
 !
 ```
+#### Leaf 2
+```
+interface Ethernet1
+   no switchport
+   mtu 1500
+   ip address 10.2.1.6/30
+   ip ospf neighbor bfd
+   ip ospf network point-to-point
+   ip ospf authentication message-digest
+   ip ospf area 0.0.0.0
+   ip ospf message-digest-key 1 md5 7 f0x3GerlAiU=
+!
+interface Ethernet2
+   no switchport
+   mtu 1500
+   ip address 10.2.2.6/30
+   ip ospf neighbor bfd
+   ip ospf network point-to-point
+   ip ospf area 0.0.0.0
+!
+interface Ethernet3
+   no switchport
+   mtu 1500
+   ip address 192.168.2.1/24
+   ip ospf neighbor bfd
+   ip ospf network point-to-point
+   ip ospf area 0.0.0.0
+!
+interface Loopback0
+   ip address 10.1.2.1/32
+   ip ospf area 0.0.0.0
+!
+ip routing
+!
+router ospf 1
+   router-id 10.1.2.1
+   auto-cost reference-bandwidth 40000
+   passive-interface default
+   no passive-interface Ethernet1
+   no passive-interface Ethernet2
+   log-adjacency-changes
+   max-lsa 12000
+!
+```
+#### Leaf 3
+```
+interface Ethernet1
+   no switchport
+   mtu 1500
+   ip address 10.2.1.10/30
+   ip ospf neighbor bfd
+   ip ospf network point-to-point
+   ip ospf authentication message-digest
+   ip ospf area 0.0.0.0
+   ip ospf message-digest-key 1 md5 7 f0x3GerlAiU=
+!
+interface Ethernet2
+   no switchport
+   mtu 1500
+   ip address 10.2.2.10/30
+   ip ospf neighbor bfd
+   ip ospf network point-to-point
+   ip ospf area 0.0.0.0
+!
+interface Ethernet3
+   no switchport
+   mtu 1500
+   ip address 192.168.3.1/24
+   ip ospf neighbor bfd
+   ip ospf network point-to-point
+   ip ospf area 0.0.0.0
+!
+interface Ethernet4
+   no switchport
+   mtu 1500
+   ip address 192.168.4.1/24
+   ip ospf neighbor bfd
+   ip ospf network point-to-point
+   ip ospf area 0.0.0.0
+!
+interface Loopback0
+   ip address 10.1.3.1/32
+   ip ospf area 0.0.0.0
+!
+ip routing
+!
+router ospf 1
+   router-id 10.1.1.1
+   auto-cost reference-bandwidth 40000
+   passive-interface default
+   no passive-interface Ethernet1
+   no passive-interface Ethernet2
+   log-adjacency-changes
+   max-lsa 12000
+!
+```
+
 
 </details>
 
 После настройки на сетевых устройствах протокола маршрутизации проверим результаты.
  Пробуем с Client1 "достучаться" до Client2, Client3 и Client4:
 
+ #### Client 2
+ ![ping2.png](ping2.png)
+ 
+ #### Client 3
+ ![ping3.png](ping4.png)
+ 
+ #### Client 4
+ ![ping4.png](ping4.png)
+ 
+
  Как видим Client1 видит других клиентов.
 
  Далее посмотрим OSPF соседей на спайнах:
+ 
+ #### Spine 1
+ ![nei1.png](nei1.png)
+ 
+ #### Spine 2
+ ![nei2.png](nei2.png)
 
- Так же проверим Route Table на каждом коммутаторе:
+ Так же проверим Route Table на на спайнах:
+
+ #### Spine 1
+ ![route1.png](route1.png)
+ 
+ #### Spine 2
+ ![route2.png](route2.png)
+ 
