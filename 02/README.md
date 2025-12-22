@@ -467,10 +467,10 @@ router ospf 1
 </details>
 
 После настройки на сетевых устройствах протокола маршрутизации проверим результаты.
- Пробуем с Client1 "достучаться" до Client2, Client3 и Client4:
+ Пробуем ,например, с Client2 "достучаться" до Client1, Client3 и Client4:
 
  #### Client 2
- ![ping2.png](ping2.png)
+ ![ping1.png](ping1.png)
  
  #### Client 3
  ![ping3.png](ping4.png)
@@ -479,21 +479,104 @@ router ospf 1
  ![ping4.png](ping4.png)
  
 
- Как видим Client1 видит других клиентов.
+ Как видим, Client1 видит других клиентов.
 
  Далее посмотрим OSPF соседей на спайнах:
  
  #### Spine 1
- ![nei1.png](nei1.png)
+ 
+ Spine1#sh ip ospf neighbor
+ ```
+ Neighbor ID     Instance VRF      Pri State                  Dead Time   Address         Interface
+ 10.1.1.1        1        default  0   FULL                   00:00:35    10.2.1.2        Ethernet1
+ 10.1.2.1        1        default  0   FULL                   00:00:31    10.2.1.6        Ethernet2
+ 10.1.3.1        1        default  0   FULL                   00:00:34    10.2.1.10       Ethernet3
+ ```
  
  #### Spine 2
- ![nei2.png](nei2.png)
+ ```
+ Spine2#sh ip ospf neighbor
+ Neighbor ID     Instance VRF      Pri State                  Dead Time   Address         Interface
+ 10.1.1.1        1        default  0   FULL                   00:00:33    10.2.2.2        Ethernet1
+ 10.1.2.1        1        default  0   FULL                   00:00:37    10.2.2.6        Ethernet2
+ 10.1.3.1        1        default  0   FULL                   00:00:36    10.2.2.10       Ethernet3
+ ```
 
  Так же проверим Route Table на на спайнах:
 
  #### Spine 1
- ![route1.png](route1.png)
+ ```
+ Spine1#sh ip route
+
+ VRF: default
+ Codes: C - connected, S - static, K - kernel,
+       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
+       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
+       N2 - OSPF NSSA external type2, B - Other BGP Routes,
+       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
+       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
+       A O - OSPF Summary, NG - Nexthop Group Static Route,
+       V - VXLAN Control Service, M - Martian,
+       DH - DHCP client installed default route,
+       DP - Dynamic Policy Route, L - VRF Leaked,
+       G  - gRIBI, RC - Route Cache Route
+
+ Gateway of last resort is not set
+
+  C        10.0.1.1/32 is directly connected, Loopback0
+  O        10.0.2.1/32 [110/90] via 10.2.1.2, Ethernet1
+                               via 10.2.1.6, Ethernet2
+                               via 10.2.1.10, Ethernet3
+  O        10.1.1.1/32 [110/50] via 10.2.1.2, Ethernet1
+  O        10.1.2.1/32 [110/50] via 10.2.1.6, Ethernet2
+  O        10.1.3.1/32 [110/50] via 10.2.1.10, Ethernet3
+  C        10.2.1.0/30 is directly connected, Ethernet1
+  C        10.2.1.4/30 is directly connected, Ethernet2
+  C        10.2.1.8/30 is directly connected, Ethernet3
+  O        10.2.2.0/30 [110/80] via 10.2.1.2, Ethernet1
+  O        10.2.2.4/30 [110/80] via 10.2.1.6, Ethernet2
+  O        10.2.2.8/30 [110/80] via 10.2.1.10, Ethernet3
+  O        192.168.1.0/24 [110/80] via 10.2.1.2, Ethernet1
+  O        192.168.2.0/24 [110/80] via 10.2.1.6, Ethernet2
+  O        192.168.3.0/24 [110/80] via 10.2.1.10, Ethernet3
+  O        192.168.4.0/24 [110/80] via 10.2.1.10, Ethernet3
+ ```
  
  #### Spine 2
- ![route2.png](route2.png)
- 
+ ```
+ Spine2#sh ip route
+
+ VRF: default
+ Codes: C - connected, S - static, K - kernel,
+       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
+       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
+       N2 - OSPF NSSA external type2, B - Other BGP Routes,
+       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
+       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
+       A O - OSPF Summary, NG - Nexthop Group Static Route,
+       V - VXLAN Control Service, M - Martian,
+       DH - DHCP client installed default route,
+       DP - Dynamic Policy Route, L - VRF Leaked,
+       G  - gRIBI, RC - Route Cache Route
+
+ Gateway of last resort is not set
+
+  O        10.0.1.1/32 [110/90] via 10.2.2.2, Ethernet1
+                               via 10.2.2.6, Ethernet2
+                               via 10.2.2.10, Ethernet3
+  C        10.0.2.1/32 is directly connected, Loopback0
+  O        10.1.1.1/32 [110/50] via 10.2.2.2, Ethernet1
+  O        10.1.2.1/32 [110/50] via 10.2.2.6, Ethernet2
+  O        10.1.3.1/32 [110/50] via 10.2.2.10, Ethernet3
+  O        10.2.1.0/30 [110/80] via 10.2.2.2, Ethernet1
+  O        10.2.1.4/30 [110/80] via 10.2.2.6, Ethernet2
+  O        10.2.1.8/30 [110/80] via 10.2.2.10, Ethernet3
+  C        10.2.2.0/30 is directly connected, Ethernet1
+  C        10.2.2.4/30 is directly connected, Ethernet2
+  C        10.2.2.8/30 is directly connected, Ethernet3
+  O        192.168.1.0/24 [110/80] via 10.2.2.2, Ethernet1
+  O        192.168.2.0/24 [110/80] via 10.2.2.6, Ethernet2
+  O        192.168.3.0/24 [110/80] via 10.2.2.10, Ethernet3
+  O        192.168.4.0/24 [110/80] via 10.2.2.10, Ethernet3
+ ```
+ Как видим, в таблицах маршрутизации присутствуют маршруты, полученные из протокола OSPF.
