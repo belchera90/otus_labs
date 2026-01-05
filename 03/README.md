@@ -234,6 +234,7 @@ VPCS> ip 192.168.4.100 255.255.255.0 192.168.4.1
 
 <details>
 <summary> Итоговая конфигурация </summary>
+  
 #### Spine 1
 ```
 hostname Spine1
@@ -278,6 +279,7 @@ router isis spine1
 !
 end
 ```
+  
 #### Spine 2
 ```
 hostname Spine2
@@ -323,6 +325,7 @@ router isis spine2
 !
 end
 ```
+  
 #### Leaf 1
 ```
 hostname Leaf1
@@ -370,6 +373,7 @@ router isis leaf1
 !
 end
 ```
+
 #### Leaf 2
 ```
 hostname Leaf2
@@ -413,6 +417,7 @@ router isis leaf2
 !
 end
 ```
+
 #### Leaf 3
 ```
 hostname Leaf3
@@ -466,7 +471,14 @@ end
 
 После настройки на сетевых устройствах протокола маршрутизации проверим результаты.
  Пробуем с Client1 "достучаться" до Client2, Client3 и Client4:
-
+ #### Client 2
+ ![ping2.png](ping2.png)
+ 
+ #### Client 3
+ ![ping3.png](ping3.png)
+ 
+ #### Client 4
+ ![ping4.png](ping4.png)
  Как видим Client1 видит других клиентов.
 
  Далее посмотрим IS-IS соседей на спайнах:
@@ -489,8 +501,10 @@ end
  ```
 
  Так же проверим Route Table на каждом коммутаторе:
+ 
  <details>
  <summary> Route Table </summary>
+   
  #### Spine 1
  ```
  VRF: default
@@ -523,6 +537,7 @@ end
   I L1     192.168.3.0/24 [115/20] via 10.2.1.10, Ethernet3
   I L1     192.168.4.0/24 [115/20] via 10.2.1.10, Ethernet3
  ```
+
  #### Spine 2
  ```
  VRF: default
@@ -555,6 +570,7 @@ end
   I L1     192.168.3.0/24 [115/20] via 10.2.2.10, Ethernet3
   I L1     192.168.4.0/24 [115/20] via 10.2.2.10, Ethernet3
  ```
+
  #### Leaf 1
  ```
  VRF: default
@@ -589,6 +605,7 @@ end
   I L1     192.168.4.0/24 [115/30] via 10.2.1.1, Ethernet1
                                   via 10.2.2.1, Ethernet2
  ```
+
  #### Leaf 2
  ```
  VRF: default
@@ -622,8 +639,8 @@ end
                                   via 10.2.2.5, Ethernet2
   I L1     192.168.4.0/24 [115/30] via 10.2.1.5, Ethernet1
                                   via 10.2.2.5, Ethernet2
-
  ```
+
  #### Leaf 3
  ```
  VRF: default
@@ -661,6 +678,7 @@ end
 Как видим, в таблицах маршрутизации присутствуют маршруты, полученные из протокола IS-IS.
 
 Так же посмотрим на базу данных протокола:
+
 ```
 IS-IS Instance: leaf1 VRF: default
   IS-IS Level 1 Link State Database
