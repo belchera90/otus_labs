@@ -6,14 +6,14 @@
 - Собрать схему CLOS
 - Распределить адресное пространство
 
-### Настроить IS-IS для Underlay сети
+### Настроить BGP для Underlay сети.
 ### Описание/Пошаговая инструкция выполнения домашнего задания:
 
 В этой самостоятельной работе мы ожидаем, что вы самостоятельно:
 
-- Настроите IS-IS в Underlay сети, для IP связанности между всеми сетевыми устройствами.
-- Зафиксируете в документации - план работы, адресное пространство, схему сети, конфигурацию устройств.
-- Убедитесь в наличии IP связанности между устройствами в IS-IS домене.
+- Настроите BGP в Underlay сети, для IP связанности между всеми сетевыми устройствами. iBGP или eBGP - решать вам!
+- Зафиксируете в документации - план работы, адресное пространство, схему сети, конфигурацию устройств
+- Убедитесь в наличии IP связанности между устройствами в BGP домене
 
 ### Топология сети
 
@@ -54,11 +54,12 @@ Client4|eth0|192.168.4.100|255.255.255.0
 
 <summary> Общая информация </summary>
 
-Протокол маршрутизации промежуточных систем (англ. IS-IS) — протокол динамической маршрутизации, основанный на технологии отслеживания состояния канала (link-state technology) и использующий для нахождения кратчайшего пути алгоритм Дейкстры.</br>
-Протокол IS-IS представляет собой протокол внутреннего шлюза (Interior Gateway Protocol — IGP), стандартизированный ISO и использующийся в основном в крупных сетях провайдеров услуг. IS-IS может также использоваться в корпоративных сетях особо крупного масштаба.</br>
-IS-IS же работает поверх канального уровня модели OSI[2], поэтому он не привязан к конкретному протоколу сетевого уровня. Также IS-IS не использует протокол IP для доставки сообщений, содержащих информацию о маршрутизации.</br>
+BGP (англ. Border Gateway Protocol, протокол граничного шлюза) — протокол динамической маршрутизации. Относится к классу протоколов маршрутизации внешнего шлюза (англ. EGP — Exterior Gateway Protocol).</br>
+Протокол BGP предназначен для обмена информацией о достижимости подсетей между автономными системами (АС, англ. AS — autonomous system), то есть группами маршрутизаторов под единым техническим и административным управлением, использующими протокол внутридоменной маршрутизации для определения маршрутов внутри себя и протокол междоменной маршрутизации для определения маршрутов доставки пакетов в другие АС. Передаваемая информация включает в себя список АС, к которым имеется доступ через данную систему. Выбор наилучших маршрутов осуществляется исходя из правил, принятых в сети.</br>
+BGP является протоколом прикладного уровня и функционирует поверх протокола транспортного уровня TCP (порт 179). После установки соединения передаётся информация обо всех маршрутах, предназначенных для экспорта. В дальнейшем передаётся только информация об изменениях в таблицах маршрутизации. При закрытии соединения удаляются все маршруты, информация о которых передана противоположной стороной.</br>
+Когда протокол BGP используется между двумя узлами в одной автономной системе (AS), он называется внутренним BGP (iBGP или внутренний протокол пограничного шлюза). Когда он используется между разными автономными системами, он называется внешним BGP (eBGP или внешний протокол пограничного шлюза).</br>
 
-OSPF имеет следующие преимущества:
+BGP имеет следующие преимущества:
 
 - Высокая скорость сходимости по сравнению с дистанционно-векторными протоколами маршрутизации;
 - Поддержка сетевых масок переменной длины (VLSM);
@@ -68,6 +69,8 @@ OSPF имеет следующие преимущества:
 </details>
 
 ### Выполнение:
+
+Для выполнения лабораторной работы выберем eBGP, так как этот протокол более легко масштабируется.
 
 Произведем начальную настройку коммутаторов, в которой выполним команды конфигурирования адресного пространства:
 <details>
@@ -204,30 +207,27 @@ VPCS> ip 192.168.4.100 255.255.255.0 192.168.4.1
 
 Протокол IS-IS является мультизональным протоколом. Однако в данном случае ограничимся одной зоной, в которую поместим все коммутаторы, так как разделения на зоны здесь является избыточным. Поскольку маршрутизаторы находятся в одной зоне и имеют полную связанность, установим между ними соседство уровня 1 (L1).
 ```
-   net 49.0001.XXXX.XXXX.XXXX.00
-   is-type level-1
+
 ```
 
 Протокол IS-IS является протоколом типа Link-State с выбором сетевого устройства с ролью DIS,  который генерирует pseudo-node LSP(виртуальные роутер) для оптимизации топологии и сокращения флуда LSP. Поскольку наша зона делится на сегменты сети состоящих из p2p линков, мы можем обойтись без DIS. Обозначим нашу сеть как point-to-point.
 ```
-   isis network point-to-point
+
 ```
 
 Значения параметров hello-interval и hello-multiplier оставим по умолчанию(для избежания лишнего hello флуда), а для быстрого обнаружения проблем на линках включим протокол BFD.
 ```
-  isis bfd
+
 ```
 
 На оконечных сетевых интерфейсах Leaf1 настроем аутентифиукацмю по паролю.
 ```
-   isis authentication mode text
-   isis authentication key 7 WsZtIQgr6yw=
+
 ```
 
 Отфильтруем IP активных интерфейсов и все не используемые IP TLV. Так же включим защиту от спуфинга.
 ```
-   advertise passive-only
-   lsp purge origination-identification
+
 ```
 
 Таким образом, итоговые конфигурации коммуторов будут выглядеть так:
@@ -239,233 +239,35 @@ VPCS> ip 192.168.4.100 255.255.255.0 192.168.4.1
 ```
 hostname Spine1
 !
-interface Ethernet1
-   no switchport
-   ip address 10.2.1.1/30
-   isis enable spine1
-   isis network point-to-point
-   isis authentication mode text
-   isis authentication key 7 6P+LZLHE+zV8Z+TRl+CFvQ==
-!
-interface Ethernet2
-   no switchport
-   ip address 10.2.1.5/30
-   isis enable spine1
-   isis network point-to-point
-!
-interface Ethernet3
-   no switchport
-   ip address 10.2.1.9/30
-   isis enable spine1
-   isis network point-to-point
-!
-interface Loopback0
-   ip address 10.0.1.1/32
-   isis enable spine1
-   isis passive
-!
-ip routing
-!
-router isis spine1
-   net 49.0001.0100.0000.1001.00
-   router-id ipv4 10.0.1.1
-   is-type level-1
-   lsp purge origination-identification
-   log-adjacency-changes
-   advertise passive-only
-   !
-   address-family ipv4 unicast
-      bfd all-interfaces
-!
-end
+
 ```
   
 #### Spine 2
 ```
 hostname Spine2
 !
-interface Ethernet1
-   no switchport
-   ip address 10.2.2.1/30
-   isis enable spine2
-   isis network point-to-point
-   isis authentication mode text
-   isis authentication key 7 HtjiSx7H7XU=
-!
-interface Ethernet2
-   no switchport
-   ip address 10.2.2.5/30
-   isis enable spine2
-   isis network point-to-point
-!
-interface Ethernet3
-   no switchport
-   ip address 10.2.2.9/30
-   isis enable spine2
-   isis network point-to-point
-!
-interface Loopback0
-   ip address 10.0.2.1/32
-   isis enable spine2
-   isis passive
-!
-ip routing
-!
-router isis spine2
-   net 49.0001.0100.0000.2001.00
-   router-id ipv4 10.0.2.1
-   is-type level-1
-   lsp purge origination-identification
-   log-adjacency-changes
-   advertise passive-only
-   !
-   address-family ipv4 unicast
-      maximum-paths 4
-      bfd all-interfaces
-!
-end
+
 ```
   
 #### Leaf 1
 ```
 hostname Leaf1
 !
-interface Ethernet1
-   no switchport
-   ip address 10.2.1.2/30
-   isis enable leaf1
-   isis bfd
-   isis network point-to-point
-   isis authentication mode text
-   isis authentication key 7 726KMReTTFcxpVumsd2Asw==
-!
-interface Ethernet2
-   no switchport
-   ip address 10.2.2.2/30
-   isis enable leaf1
-   isis bfd
-   isis network point-to-point
-   isis authentication mode text
-   isis authentication key 7 WsZtIQgr6yw=
-!
-interface Ethernet3
-   no switchport
-   ip address 192.168.1.1/24
-   isis enable leaf1
-   isis passive
-!
-interface Loopback0
-   ip address 10.1.1.1/32
-   isis enable leaf1
-   isis passive
-!
-ip routing
-!
-router isis leaf1
-   net 49.0001.0100.0100.1001.00
-   router-id ipv4 10.1.1.1
-   is-type level-1
-   lsp purge origination-identification
-   log-adjacency-changes
-   advertise passive-only
-   !
-   address-family ipv4 unicast
-!
-end
+
 ```
 
 #### Leaf 2
 ```
 hostname Leaf2
 !
-interface Ethernet1
-   no switchport
-   ip address 10.2.1.6/30
-   isis enable leaf2
-   isis bfd
-   isis network point-to-point
-!
-interface Ethernet2
-   no switchport
-   ip address 10.2.2.6/30
-   isis enable leaf2
-   isis bfd
-   isis network point-to-point
-!
-interface Ethernet3
-   no switchport
-   ip address 192.168.2.1/24
-   isis enable leaf2
-   isis passive
-!
-interface Loopback0
-   ip address 10.1.2.1/32
-   isis enable leaf2
-   isis passive
-!
-ip routing
-!
-router isis leaf2
-   net 49.0001.0100.0100.2001.00
-   router-id ipv4 10.1.2.1
-   is-type level-1
-   lsp purge origination-identification
-   log-adjacency-changes
-   advertise passive-only
-   !
-   address-family ipv4 unicast
-!
-end
+
 ```
 
 #### Leaf 3
 ```
 hostname Leaf3
 !
-interface Ethernet1
-   no switchport
-   ip address 10.2.1.10/30
-   isis enable leaf3
-   isis bfd
-   isis network point-to-point
-!
-interface Ethernet2
-   no switchport
-   ip address 10.2.2.10/30
-   isis enable leaf3
-   isis bfd
-   isis network point-to-point
-!
-interface Ethernet3
-   no switchport
-   ip address 192.168.3.1/24
-   isis enable leaf3
-   isis passive
-!
-interface Ethernet4
-   no switchport
-   ip address 192.168.4.1/24
-   isis enable leaf3
-   isis passive
-!
-interface Loopback0
-   ip address 10.1.3.1/32
-   isis enable leaf3
-   isis passive
-!
-ip routing
-!
-router isis leaf3
-   net 49.0001.0100.0100.3001.00
-   router-id ipv4 10.1.3.1
-   is-type level-1
-   lsp purge origination-identification
-   log-adjacency-changes
-   advertise passive-only
-   !
-   address-family ipv4 unicast
-!
-end
+
 ```
 </details>
 
@@ -481,23 +283,14 @@ end
  ![ping4.png](ping4.png)
  Как видим Client1 видит других клиентов.
 
- Далее посмотрим IS-IS соседей на спайнах:
+ Далее посмотрим eBGP соседей на спайнах:
  #### Spine 1
  ```
- Spine1#sh isis neighbors
- Instance  VRF      System Id        Type Interface          SNPA              State Hold time   Circuit Id
- spine1    default  Leaf1            L1   Ethernet1          P2P               UP    20          0E
- spine1    default  Leaf2            L1   Ethernet2          P2P               UP    29          0E
- spine1    default  Leaf3            L1   Ethernet3          P2P               UP    29          0E
+
  ```
 #### Spine 1
  ```
- Spine2#sh isis neighbors
 
- Instance  VRF      System Id        Type Interface          SNPA              State Hold time   Circuit Id
- spine2    default  Leaf1            L1   Ethernet1          P2P               UP    21          0F
- spine2    default  Leaf2            L1   Ethernet2          P2P               UP    23          0F
- spine2    default  Leaf3            L1   Ethernet3          P2P               UP    23          0F
  ```
 
  Так же проверим Route Table на каждом коммутаторе:
@@ -507,185 +300,33 @@ end
    
  #### Spine 1
  ```
- VRF: default
- Codes: C - connected, S - static, K - kernel,
-       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
-       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
-       N2 - OSPF NSSA external type2, B - Other BGP Routes,
-       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
-       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
-       A O - OSPF Summary, NG - Nexthop Group Static Route,
-       V - VXLAN Control Service, M - Martian,
-       DH - DHCP client installed default route,
-       DP - Dynamic Policy Route, L - VRF Leaked,
-       G  - gRIBI, RC - Route Cache Route
 
- Gateway of last resort is not set
-
-  C        10.0.1.1/32 is directly connected, Loopback0
-  I L1     10.0.2.1/32 [115/30] via 10.2.1.2, Ethernet1
-                               via 10.2.1.6, Ethernet2
-                               via 10.2.1.10, Ethernet3
-  I L1     10.1.1.1/32 [115/20] via 10.2.1.2, Ethernet1
-  I L1     10.1.2.1/32 [115/20] via 10.2.1.6, Ethernet2
-  I L1     10.1.3.1/32 [115/20] via 10.2.1.10, Ethernet3
-  C        10.2.1.0/30 is directly connected, Ethernet1
-  C        10.2.1.4/30 is directly connected, Ethernet2
-  C        10.2.1.8/30 is directly connected, Ethernet3
-  I L1     192.168.1.0/24 [115/20] via 10.2.1.2, Ethernet1
-  I L1     192.168.2.0/24 [115/20] via 10.2.1.6, Ethernet2
-  I L1     192.168.3.0/24 [115/20] via 10.2.1.10, Ethernet3
-  I L1     192.168.4.0/24 [115/20] via 10.2.1.10, Ethernet3
  ```
 
  #### Spine 2
  ```
- VRF: default
- Codes: C - connected, S - static, K - kernel,
-       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
-       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
-       N2 - OSPF NSSA external type2, B - Other BGP Routes,
-       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
-       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
-       A O - OSPF Summary, NG - Nexthop Group Static Route,
-       V - VXLAN Control Service, M - Martian,
-       DH - DHCP client installed default route,
-       DP - Dynamic Policy Route, L - VRF Leaked,
-       G  - gRIBI, RC - Route Cache Route
 
- Gateway of last resort is not set
-
-  I L1     10.0.1.1/32 [115/30] via 10.2.2.2, Ethernet1
-                               via 10.2.2.6, Ethernet2
-                               via 10.2.2.10, Ethernet3
-  C        10.0.2.1/32 is directly connected, Loopback0
-  I L1     10.1.1.1/32 [115/20] via 10.2.2.2, Ethernet1
-  I L1     10.1.2.1/32 [115/20] via 10.2.2.6, Ethernet2
-  I L1     10.1.3.1/32 [115/20] via 10.2.2.10, Ethernet3
-  C        10.2.2.0/30 is directly connected, Ethernet1
-  C        10.2.2.4/30 is directly connected, Ethernet2
-  C        10.2.2.8/30 is directly connected, Ethernet3
-  I L1     192.168.1.0/24 [115/20] via 10.2.2.2, Ethernet1
-  I L1     192.168.2.0/24 [115/20] via 10.2.2.6, Ethernet2
-  I L1     192.168.3.0/24 [115/20] via 10.2.2.10, Ethernet3
-  I L1     192.168.4.0/24 [115/20] via 10.2.2.10, Ethernet3
  ```
 
  #### Leaf 1
  ```
- VRF: default
- Codes: C - connected, S - static, K - kernel,
-       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
-       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
-       N2 - OSPF NSSA external type2, B - Other BGP Routes,
-       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
-       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
-       A O - OSPF Summary, NG - Nexthop Group Static Route,
-       V - VXLAN Control Service, M - Martian,
-       DH - DHCP client installed default route,
-       DP - Dynamic Policy Route, L - VRF Leaked,
-       G  - gRIBI, RC - Route Cache Route
 
- Gateway of last resort is not set
-
-  I L1     10.0.1.1/32 [115/20] via 10.2.1.1, Ethernet1
-  I L1     10.0.2.1/32 [115/20] via 10.2.2.1, Ethernet2
-  C        10.1.1.1/32 is directly connected, Loopback0
-  I L1     10.1.2.1/32 [115/30] via 10.2.1.1, Ethernet1
-                               via 10.2.2.1, Ethernet2
-  I L1     10.1.3.1/32 [115/30] via 10.2.1.1, Ethernet1
-                               via 10.2.2.1, Ethernet2
-  C        10.2.1.0/30 is directly connected, Ethernet1
-  C        10.2.2.0/30 is directly connected, Ethernet2
-  C        192.168.1.0/24 is directly connected, Ethernet3
-  I L1     192.168.2.0/24 [115/30] via 10.2.1.1, Ethernet1
-                                  via 10.2.2.1, Ethernet2
-  I L1     192.168.3.0/24 [115/30] via 10.2.1.1, Ethernet1
-                                  via 10.2.2.1, Ethernet2
-  I L1     192.168.4.0/24 [115/30] via 10.2.1.1, Ethernet1
-                                  via 10.2.2.1, Ethernet2
  ```
 
  #### Leaf 2
  ```
- VRF: default
- Codes: C - connected, S - static, K - kernel,
-       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
-       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
-       N2 - OSPF NSSA external type2, B - Other BGP Routes,
-       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
-       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
-       A O - OSPF Summary, NG - Nexthop Group Static Route,
-       V - VXLAN Control Service, M - Martian,
-       DH - DHCP client installed default route,
-       DP - Dynamic Policy Route, L - VRF Leaked,
-       G  - gRIBI, RC - Route Cache Route
 
- Gateway of last resort is not set
-
-  I L1     10.0.1.1/32 [115/20] via 10.2.1.5, Ethernet1
-  I L1     10.0.2.1/32 [115/20] via 10.2.2.5, Ethernet2
-  I L1     10.1.1.1/32 [115/30] via 10.2.1.5, Ethernet1
-                               via 10.2.2.5, Ethernet2
-  C        10.1.2.1/32 is directly connected, Loopback0
-  I L1     10.1.3.1/32 [115/30] via 10.2.1.5, Ethernet1
-                               via 10.2.2.5, Ethernet2
-  C        10.2.1.4/30 is directly connected, Ethernet1
-  C        10.2.2.4/30 is directly connected, Ethernet2
-  I L1     192.168.1.0/24 [115/30] via 10.2.1.5, Ethernet1
-                                  via 10.2.2.5, Ethernet2
-  C        192.168.2.0/24 is directly connected, Ethernet3
-  I L1     192.168.3.0/24 [115/30] via 10.2.1.5, Ethernet1
-                                  via 10.2.2.5, Ethernet2
-  I L1     192.168.4.0/24 [115/30] via 10.2.1.5, Ethernet1
-                                  via 10.2.2.5, Ethernet2
  ```
 
  #### Leaf 3
  ```
- VRF: default
- Codes: C - connected, S - static, K - kernel,
-       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
-       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
-       N2 - OSPF NSSA external type2, B - Other BGP Routes,
-       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
-       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
-       A O - OSPF Summary, NG - Nexthop Group Static Route,
-       V - VXLAN Control Service, M - Martian,
-       DH - DHCP client installed default route,
-       DP - Dynamic Policy Route, L - VRF Leaked,
-       G  - gRIBI, RC - Route Cache Route
 
- Gateway of last resort is not set
-
-  I L1     10.0.1.1/32 [115/20] via 10.2.1.9, Ethernet1
-  I L1     10.0.2.1/32 [115/20] via 10.2.2.9, Ethernet2
-  I L1     10.1.1.1/32 [115/30] via 10.2.1.9, Ethernet1
-                               via 10.2.2.9, Ethernet2
-  I L1     10.1.2.1/32 [115/30] via 10.2.1.9, Ethernet1
-                               via 10.2.2.9, Ethernet2
-  C        10.1.3.1/32 is directly connected, Loopback0
-  C        10.2.1.8/30 is directly connected, Ethernet1
-  C        10.2.2.8/30 is directly connected, Ethernet2
-  I L1     192.168.1.0/24 [115/30] via 10.2.1.9, Ethernet1
-                                  via 10.2.2.9, Ethernet2
-  I L1     192.168.2.0/24 [115/30] via 10.2.1.9, Ethernet1
-                                  via 10.2.2.9, Ethernet2
-  C        192.168.3.0/24 is directly connected, Ethernet3
-  C        192.168.4.0/24 is directly connected, Ethernet4
  ```
 </details>
-Как видим, в таблицах маршрутизации присутствуют маршруты, полученные из протокола IS-IS.
+Как видим, в таблицах маршрутизации присутствуют маршруты, полученные из протокола eBGP.
 
 Так же посмотрим на базу данных протокола:
 
 ```
-IS-IS Instance: leaf1 VRF: default
-  IS-IS Level 1 Link State Database
-    LSPID                   Seq Num  Cksum  Life Length IS Flags
-    Spine1.00-00                 17  23711   777    119 L1 <>
-    Spine2.00-00                 17  39753  1128    119 L1 <>
-    Leaf1.00-00                  16  26746   456    115 L1 <>
-    Leaf2.00-00                  16  28246   881    115 L1 <>
-    Leaf3.00-00                  16  32541  1114    127 L1 <>
+
 ```
