@@ -242,6 +242,7 @@ hostname Spine1
 interface Ethernet1
    no switchport
    ip address 10.2.1.1/30
+   mtu 1500
    isis enable spine1
    isis network point-to-point
    isis authentication mode text
@@ -250,12 +251,14 @@ interface Ethernet1
 interface Ethernet2
    no switchport
    ip address 10.2.1.5/30
+   mtu 1500
    isis enable spine1
    isis network point-to-point
 !
 interface Ethernet3
    no switchport
    ip address 10.2.1.9/30
+   mtu 1500
    isis enable spine1
    isis network point-to-point
 !
@@ -287,6 +290,7 @@ hostname Spine2
 interface Ethernet1
    no switchport
    ip address 10.2.2.1/30
+   mtu 1500
    isis enable spine2
    isis network point-to-point
    isis authentication mode text
@@ -295,12 +299,14 @@ interface Ethernet1
 interface Ethernet2
    no switchport
    ip address 10.2.2.5/30
+   mtu 1500
    isis enable spine2
    isis network point-to-point
 !
 interface Ethernet3
    no switchport
    ip address 10.2.2.9/30
+   mtu 1500
    isis enable spine2
    isis network point-to-point
 !
@@ -333,6 +339,7 @@ hostname Leaf1
 interface Ethernet1
    no switchport
    ip address 10.2.1.2/30
+   mtu 1500
    isis enable leaf1
    isis bfd
    isis network point-to-point
@@ -342,6 +349,7 @@ interface Ethernet1
 interface Ethernet2
    no switchport
    ip address 10.2.2.2/30
+   mtu 1500
    isis enable leaf1
    isis bfd
    isis network point-to-point
@@ -381,6 +389,7 @@ hostname Leaf2
 interface Ethernet1
    no switchport
    ip address 10.2.1.6/30
+   mtu 1500
    isis enable leaf2
    isis bfd
    isis network point-to-point
@@ -388,6 +397,7 @@ interface Ethernet1
 interface Ethernet2
    no switchport
    ip address 10.2.2.6/30
+   mtu 1500
    isis enable leaf2
    isis bfd
    isis network point-to-point
@@ -425,6 +435,7 @@ hostname Leaf3
 interface Ethernet1
    no switchport
    ip address 10.2.1.10/30
+   mtu 1500
    isis enable leaf3
    isis bfd
    isis network point-to-point
@@ -432,6 +443,7 @@ interface Ethernet1
 interface Ethernet2
    no switchport
    ip address 10.2.2.10/30
+   mtu 1500
    isis enable leaf3
    isis bfd
    isis network point-to-point
