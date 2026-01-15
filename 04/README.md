@@ -70,7 +70,6 @@ BGP имеет следующие преимущества:
 
 ### Выполнение:
 
-Для выполнения лабораторной работы выберем eBGP, так как этот протокол более легко масштабируется.
 
 Произведем начальную настройку коммутаторов, в которой выполним команды конфигурирования адресного пространства:
 <details>
@@ -201,9 +200,9 @@ VPCS> ip 192.168.4.100 255.255.255.0 192.168.4.1
 ```
 </details>
 
-Нам необходимо настроить сеть таким образом, чтобы Клиенты видели друг друга и могли передавать траффик. Как и в предыдущей лабораторной работе, предположим, что нам необходимо защитить паролем линк от Leaf 1 до Spine 1 с помощью аутентификации, для того чтобы исключить возможность подключению сторонних сетевых устройств. 
+Нам необходимо настроить сеть таким образом, чтобы Клиенты видели друг друга и могли передавать траффик. 
 
-В данной лабораторной работе будем использовать протокол динамической маршрутизации IS-IS.
+Для выполнения лабораторной работы выберем eBGP, так как этот протокол более легко масштабируется.
 
 Протокол IS-IS является мультизональным протоколом. Однако в данном случае ограничимся одной зоной, в которую поместим все коммутаторы, так как разделения на зоны здесь является избыточным. Поскольку маршрутизаторы находятся в одной зоне и имеют полную связанность, установим между ними соседство уровня 1 (L1).
 ```
@@ -239,6 +238,43 @@ VPCS> ip 192.168.4.100 255.255.255.0 192.168.4.1
 ```
 hostname Spine1
 !
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 10.2.1.1/30
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 10.2.1.5/30
+!
+interface Ethernet3
+   mtu 9000
+   no switchport
+   ip address 10.2.1.9/30
+!
+interface Loopback0
+   ip address 10.0.1.1/32
+!
+ip routing
+!
+peer-filter LEAF_PF
+   10 match as-range 65001-65003 result accept
+!
+router bgp 65000
+   router-id 10.0.1.1
+   maximum-paths 2 ecmp 2
+   bgp listen range 10.2.1.0/28 peer-group LEAF_NEIGHBOR peer-filter LEAF_PF
+   neighbor LEAF_NEIGHBOR peer group
+   neighbor LEAF_NEIGHBOR out-delay 0
+   neighbor LEAF_NEIGHBOR bfd
+   neighbor LEAF_NEIGHBOR timers 1 3
+   !
+   address-family ipv4
+      neighbor LEAF_NEIGHBOR activate
+      network 10.0.1.1/32
+!
+end
 
 ```
   
@@ -246,20 +282,133 @@ hostname Spine1
 ```
 hostname Spine2
 !
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 10.2.2.1/30
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 10.2.2.5/30
+!
+interface Ethernet3
+   mtu 9000
+   no switchport
+   ip address 10.2.2.9/30
+!
+interface Loopback0
+   ip address 10.0.2.1/32
+!
+ip routing
+!
+peer-filter LEAF_PF
+   10 match as-range 65001-65003 result accept
+!
+router bgp 65000
+   router-id 10.0.2.1
+   maximum-paths 2 ecmp 2
+   bgp listen range 10.2.2.0/28 peer-group LEAF_NEIGHBOR peer-filter LEAF_PF
+   neighbor LEAF_NEIGHBOR peer group
+   neighbor LEAF_NEIGHBOR out-delay 0
+   neighbor LEAF_NEIGHBOR bfd
+   neighbor LEAF_NEIGHBOR timers 1 3
+   !
+   address-family ipv4
+      neighbor LEAF_NEIGHBOR activate
+      network 10.0.2.1/32
+!
+end
 
 ```
   
 #### Leaf 1
 ```
+
 hostname Leaf1
 !
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 10.2.1.2/30
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 10.2.2.2/30
+!
+interface Ethernet3
+   mtu 9000
+   no switchport
+   ip address 192.168.1.1/24
+!
+interface Loopback0
+   ip address 10.1.1.1/32
+!
+ip routing
+!
+router bgp 65001
+   router-id 10.1.1.1
+   maximum-paths 2 ecmp 2
+   neighbor SPINE_NEIGHBOR peer group
+   neighbor SPINE_NEIGHBOR remote-as 65000
+   neighbor SPINE_NEIGHBOR out-delay 0
+   neighbor SPINE_NEIGHBOR bfd
+   neighbor SPINE_NEIGHBOR timers 1 3
+   neighbor 10.2.1.1 peer group SPINE_NEIGHBOR
+   neighbor 10.2.2.1 peer group SPINE_NEIGHBOR
+   !
+   address-family ipv4
+      neighbor SPINE_NEIGHBOR activate
+      network 10.1.1.1/32
+      network 192.168.1.0/24
+!
+end
 
 ```
 
 #### Leaf 2
 ```
+
 hostname Leaf2
 !
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 10.2.1.6/30
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 10.2.2.6/30
+!
+interface Ethernet3
+   mtu 9000
+   no switchport
+   ip address 192.168.2.1/24
+!
+interface Loopback0
+   ip address 10.1.2.1/32
+!
+ip routing
+!
+router bgp 65002
+   router-id 10.1.2.1
+   maximum-paths 2 ecmp 2
+   neighbor SPINE_NEIGHBOR peer group
+   neighbor SPINE_NEIGHBOR remote-as 65000
+   neighbor SPINE_NEIGHBOR out-delay 0
+   neighbor SPINE_NEIGHBOR bfd
+   neighbor SPINE_NEIGHBOR timers 1 3
+   neighbor 10.2.1.5 peer group SPINE_NEIGHBOR
+   neighbor 10.2.2.5 peer group SPINE_NEIGHBOR
+   !
+   address-family ipv4
+      neighbor SPINE_NEIGHBOR activate
+      network 10.1.2.1/32
+      network 192.168.2.0/24
+!
+end
 
 ```
 
@@ -267,6 +416,49 @@ hostname Leaf2
 ```
 hostname Leaf3
 !
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 10.2.1.10/30
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 10.2.2.10/30
+!
+interface Ethernet3
+   mtu 9000
+   no switchport
+   ip address 192.168.3.1/24
+!
+interface Ethernet4
+   mtu 9000
+   no switchport
+   ip address 192.168.4.1/24
+!
+interface Loopback0
+   ip address 10.1.3.1/32
+!
+ip routing
+!
+router bgp 65003
+   router-id 10.1.3.1
+   maximum-paths 2 ecmp 2
+   neighbor SPINE_NEIGHBOR peer group
+   neighbor SPINE_NEIGHBOR remote-as 65000
+   neighbor SPINE_NEIGHBOR out-delay 0
+   neighbor SPINE_NEIGHBOR bfd
+   neighbor SPINE_NEIGHBOR timers 1 3
+   neighbor 10.2.1.9 peer group SPINE_NEIGHBOR
+   neighbor 10.2.2.9 peer group SPINE_NEIGHBOR
+   !
+   address-family ipv4
+      neighbor SPINE_NEIGHBOR activate
+      network 10.1.3.1/32
+      network 192.168.3.0/24
+      network 192.168.4.0/24
+!
+end
 
 ```
 </details>
