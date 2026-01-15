@@ -200,28 +200,33 @@ VPCS> ip 192.168.4.100 255.255.255.0 192.168.4.1
 ```
 </details>
 
-Нам необходимо настроить сеть таким образом, чтобы Клиенты видели друг друга и могли передавать траффик. 
+Нам необходимо настроить сеть таким образом, чтобы клиенты видели друг друга и могли передавать траффик. 
 
 Для выполнения лабораторной работы выберем eBGP, так как этот протокол легче масштабировать.
 
 Протокол eBGP является протоколом, соединяющим различные автономные системы. В данной лабораторной работе мы поместим спайны в автономную систему 65000, а каждый из лифов в отдельную автономную систему: leaf1 - 65001, leaf2 - 65002, leaf3 - 65003. Для избежания неконтролируемого и избыточного прохождения траффика не будем разрешать разрешать локальные номера автономных систем (AS) в обновлениях BGP. Так же для упрощения настройки соседей введем peer группы в глобальном модуле BGP и будем активировать соседей в address-family ipv4.
 ```
-
+neighbor LEAF_NEIGHBOR peer group
+neighbor SPINE_NEIGHBOR peer group
 ```
 
 Значения всех таймеров кроме таймера задержки отправки BGP UPDATE сообщений оставим по умолчанию, а для быстрого обнаружения проблем на линках включим протокол BFD.
 ```
-
+neighbor хххх bfd
 ```
 
-На leaf1, leaf2, leaf3 включим балансировку ECMP для балансировки траффика по спйанам:
+На leaf1, leaf2, leaf3 включим балансировку ECMP для балансировки траффика по спайнам:
 ```
-
+maximum-paths 2 ecmp 2
 ```
 
 На spine1, spine2 включим динамическое BGP подключение соседей с требуемых автономных систем:
 ```
+peer-filter LEAF_PF
+   10 match as-range 65001-65003 result accept
+!
 
+bgp listen range 10.2.1.0/28 peer-group LEAF_NEIGHBOR peer-filter LEAF_PF
 ```
 
 Таким образом, итоговые конфигурации коммутаторов будут выглядеть так:
@@ -454,16 +459,14 @@ end
 После настройки на сетевых устройствах протокола маршрутизации проверим результаты.
  Пробуем с Client1 "достучаться" до Client2, Client3 и Client4:
  #### Client 2
- ![ping2.png](ping2.png)
+ ![ping.png](ping.png)
  
- #### Client 3
- ![ping3.png](ping3.png)
- 
- #### Client 4
- ![ping4.png](ping4.png)
  Как видим Client1 видит других клиентов.
 
  Далее посмотрим eBGP соседей на спайнах:
+<details>
+<summary> Итоговая конфигурация </summary>
+  
  #### Spine 1
  ```
 BGP neighbor is 10.2.1.2, remote AS 65001, external link
@@ -1003,7 +1006,7 @@ TCP Socket Information:
     Advertised Recv Window (rcv_space): 65229
 
  ```
-
+ </details>
  Так же проверим Route Table на каждом коммутаторе:
  
  <details>
@@ -1190,8 +1193,41 @@ Gateway of last resort is not set
 </details>
 Как видим, в таблицах маршрутизации присутствуют маршруты, полученные из протокола eBGP.
 
-Так же посмотрим на работу протокола ECMP:
+Проверим состояние подключения лифов к спайнам
 
+ #### Leaf 1
+ ```
+BGP summary information for VRF default
+Router identifier 10.1.1.1, local AS number 65001
+Neighbor Status Codes: m - Under maintenance
+  Neighbor         V  AS           MsgRcvd   MsgSent  InQ OutQ  Up/Down State   PfxRcd PfxAcc
+  10.2.1.1         4  65000          14664     14667    0    0 00:26:11 Estab   6      6
+  10.2.2.1         4  65000          14663     14671    0    0 00:26:09 Estab   6      6
+ ```
+ #### Leaf 2
+ ```
+BGP summary information for VRF default
+Router identifier 10.1.2.1, local AS number 65002
+Neighbor Status Codes: m - Under maintenance
+  Neighbor         V  AS           MsgRcvd   MsgSent  InQ OutQ  Up/Down State   PfxRcd PfxAcc
+  10.2.1.5         4  65000          13691     13691    0    0 00:36:48 Estab   6      6
+  10.2.2.5         4  65000          13691     13695    0    0 00:36:04 Estab   6      6
+ ```
+ #### Leaf 3
+ ```
+BGP summary information for VRF default
+Router identifier 10.1.3.1, local AS number 65003
+Neighbor Status Codes: m - Under maintenance
+  Neighbor         V  AS           MsgRcvd   MsgSent  InQ OutQ  Up/Down State   PfxRcd PfxAcc
+  10.2.1.9         4  65000          13470     13471    0    0 00:37:13 Estab   5      5
+  10.2.2.9         4  65000          13469     13472    0    0 00:36:29 Estab   5      5
+
+ ```
+
+Как видим, все соединения в состоянии established.
+
+
+Так же посмотрим на работу протокола ECMP:
 
  #### Leaf 1
  ```
