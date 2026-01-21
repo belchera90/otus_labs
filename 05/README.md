@@ -5,7 +5,6 @@ VxLAN. L2 VNI
 
 - Настроить Overlay на основе VxLAN EVPN для L2 связанности между клиентами.
 
-### Настроить BGP для Underlay сети.
 ### Описание/Пошаговая инструкция выполнения домашнего задания:
 
 В этой самостоятельной работе мы ожидаем, что вы самостоятельно:
@@ -53,25 +52,36 @@ Client4|eth0|192.168.4.100|255.255.255.0
 
 <summary> Общая информация </summary>
 
-BGP (англ. Border Gateway Protocol, протокол граничного шлюза) — дистанционно-векторный протокол динамической маршрутизации. Относится к классу протоколов маршрутизации внешнего шлюза (англ. EGP — Exterior Gateway Protocol).</br>
-Протокол BGP предназначен для обмена информацией о достижимости подсетей между автономными системами (АС, англ. AS — autonomous system), то есть группами маршрутизаторов под единым техническим и административным управлением, использующими протокол внутридоменной маршрутизации для определения маршрутов внутри себя и протокол междоменной маршрутизации для определения маршрутов доставки пакетов в другие АС. Передаваемая информация включает в себя список АС, к которым имеется доступ через данную систему. Выбор наилучших маршрутов осуществляется исходя из правил, принятых в сети.</br>
-BGP является протоколом прикладного уровня и функционирует поверх протокола транспортного уровня TCP (порт 179). После установки соединения передаётся информация обо всех маршрутах, предназначенных для экспорта. В дальнейшем передаётся только информация об изменениях в таблицах маршрутизации. При закрытии соединения удаляются все маршруты, информация о которых передана противоположной стороной.</br>
-Когда протокол BGP используется между двумя узлами в одной автономной системе (AS), он называется внутренним BGP (iBGP или внутренний протокол пограничного шлюза). Когда он используется между разными автономными системами, он называется внешним BGP (eBGP или внешний протокол пограничного шлюза).</br>
+Virtual Extensible LAN (VXLAN) является технологией сетевой виртуализации, созданной для решения проблем масштабируемости в больших системах облачных вычислений. Она использует схожую с VLAN технику для MAC инкапсуляции Layer 2 Ethernet кадров в UDP-пакеты, порт 4789.</br>
+VXLAN является развитием усилий по стандартизации на оверлейном протоколе инкапсуляции. Он увеличивает масштабируемость до 16 миллионов логических сетей и позволяет сетям 2 уровня одновременно сосуществовать по IP-сетям. При этом multicast или unicast (с Head-End Replication) используются для передачи широковещательного трафика (broadcast, multicast и Unicast flood).</br>
+Принцип работы:
+VXLAN устанавливает логический туннель между устройствами источника и назначения. Процесс инкапсуляции: 
 
-BGP имеет следующие преимущества:
+ - VXLAN инкапсулирует оригинальные Ethernet-фреймы, отправленные виртуальной машиной, в UDP-пакеты.
+ - Затем инкапсулирует UDP-пакеты с заголовком IP и заголовком Ethernet физической сети в качестве внешних заголовков, что позволяет передавать эти пакеты по сети, как обычные IP-пакеты.</br>
+Упаковка и распаковка пакетов производятся конечными устройствами туннеля VXLAN (VTEP).</br>
 
-- Отличная масштабируемость;
-- Поддержка сетевых масок переменной длины (VLSM);
-- Оптимальное использование пропускной способности с построением дерева кратчайших путей;
-- Возможность поддерживать огромные таблицы маршрутов;
-- Субсекундная конвергенция. 
+Пакет протокола VXLAN состоит из следующих компонентов: 
 
+ - Заголовок Ethernet — включает MAC-адрес отправителя, MAC-адрес получателя и тип протокола (например, IPv4, IPv6).
+ - Заголовок IP — обеспечивает маршрутизацию пакета через IP-сеть. Поля: IP-адрес отправителя, IP-адрес получателя, другие поля (версия протокола, длина заголовка и т. д.).
+ - Заголовок UDP — обеспечивает транспортировку инкапсулированных Ethernet-кадров. Поля: порт отправителя, порт получателя, длина UDP-пакета, контрольная сумма.
+ - Заголовок VXLAN — состоит из полей: Flags (8 бит), Reserved1 (24 бит), VXLAN Network Identifier (VNI) (24 бит), Reserved2 (8 бит).
+ - Внутренний Ethernet-кадр — содержит оригинальные MAC-адреса отправителя и получателя, а также полезную нагрузку данных.
+
+EVPN (Ethernet Virtual Private Network) — технология, которая обеспечивает связь уровней 2 и 3 между различными сетевыми сегментами.</br>
+Некоторые особенности EVPN:
+
+ - Поддержка передачи трафика второго уровня по множественным путям. Для этого достаточно указать точку назначения туннеля в IP заголовке внешнего пакета, и у транзитных коммутаторов появляется возможность использовать все возможные пути.
+ - Снижение уровня широковещательного трафика. Коммутаторы EVPN используют программный метод обучения MAC-адресов на базе обмена BGP сообщениями. После появления нового MAC-адреса на порту доступа выполняется синхронизация таблиц коммутации по всей сети.
+ - Маршрутизация между сетями в Active-Active режиме. Устройства ведут себя как распределённый маршрутизатор, каждая часть которого имеет один и тот же IP и MAC-адреса.
+ - Механизмы обмена не только MAC, но и IP информацией. Поэтому табличные данные и поведение распределённого маршрутизатора будут идентичны на всех его компонентах.
 </details>
 
 ### Выполнение:
 
 
-Произведем начальную настройку коммутаторов, в которой выполним команды конфигурирования адресного пространства:
+Произведем начальную настройку коммутаторов, в которой выполним команды конфигурирования адресного пространства, а так же настроим протокол динамической маршрутизации для обеспечениря связаности лифов, которые будут анонсировать свой loopback. Первый и третий клиенты у нас находятся в сети 192.168.10.0/24, а второй и четвертый в сети 192.168.10.0/24:
 <details>
 
 <summary> Начальная настройка </summary>
@@ -80,60 +90,147 @@ BGP имеет следующие преимущества:
 ```
 hostname Spine1
 !
+spanning-tree mode mstp
+!
 interface Ethernet1
+   mtu 9000
    no switchport
    ip address 10.2.1.1/30
 !
 interface Ethernet2
+   mtu 9000
    no switchport
    ip address 10.2.1.5/30
 !
 interface Ethernet3
+   mtu 9000
    no switchport
    ip address 10.2.1.9/30
 !
+interface Ethernet4
+!
+interface Ethernet5
+!
+interface Ethernet6
+!
+interface Ethernet7
+!
+interface Ethernet8
+!
 interface Loopback0
    ip address 10.0.1.1/32
+!
+interface Management1
+!
+ip routing
+!
+peer-filter LEAF_PF
+   10 match as-range 65001-65003 result accept
+!
+router bgp 65000
+   router-id 10.0.1.1
+   maximum-paths 3 ecmp 3
+   bgp listen range 10.2.1.0/28 peer-group LEAF_NEIGHBOR peer-filter LEAF_PF
+   neighbor LEAF_NEIGHBOR peer group
+   neighbor LEAF_NEIGHBOR out-delay 0
+   neighbor LEAF_NEIGHBOR bfd
+   !
+   address-family ipv4
+      neighbor LEAF_NEIGHBOR activate
+      network 10.0.1.1/32
 !
 ```
 #### Spine 2
 ```
 hostname Spine2
 !
+spanning-tree mode mstp
+!
 interface Ethernet1
+   mtu 9000
    no switchport
    ip address 10.2.2.1/30
 !
 interface Ethernet2
+   mtu 9000
    no switchport
    ip address 10.2.2.5/30
 !
 interface Ethernet3
+   mtu 9000
    no switchport
    ip address 10.2.2.9/30
+!
+interface Ethernet4
+!
+interface Ethernet5
+!
+interface Ethernet6
+!
+interface Ethernet7
+!
+interface Ethernet8
 !
 interface Loopback0
    ip address 10.0.2.1/32
 !
+interface Management1
+!
+ip routing
+!
+peer-filter LEAF_PF
+   10 match as-range 65001-65003 result accept
+!
+router bgp 65000
+   router-id 10.0.2.1
+   maximum-paths 3 ecmp 3
+   bgp listen range 10.2.2.0/28 peer-group LEAF_NEIGHBOR peer-filter LEAF_PF
+   neighbor LEAF_NEIGHBOR peer group
+   neighbor LEAF_NEIGHBOR out-delay 0
+   neighbor LEAF_NEIGHBOR bfd
+   !
+   address-family ipv4
+      neighbor LEAF_NEIGHBOR activate
+      network 10.0.2.1/32
+!
+end
+
 ```
 #### Leaf 1
 ```
 hostname Leaf1
 !
 interface Ethernet1
+   mtu 9000
    no switchport
    ip address 10.2.1.2/30
 !
 interface Ethernet2
+   mtu 9000
    no switchport
    ip address 10.2.2.2/30
 !
 interface Ethernet3
-   no switchport
-   ip address 192.168.1.1/24
+   mtu 9000
 !
 interface Loopback0
    ip address 10.1.1.1/32
+!
+ip routing
+!
+router bgp 65001
+   router-id 10.1.1.1
+   maximum-paths 2 ecmp 2
+   neighbor SPINE_NEIGHBOR peer group
+   neighbor SPINE_NEIGHBOR remote-as 65000
+   neighbor SPINE_NEIGHBOR out-delay 0
+   neighbor SPINE_NEIGHBOR bfd
+   neighbor 10.2.1.1 peer group SPINE_NEIGHBOR
+   neighbor 10.2.2.1 peer group SPINE_NEIGHBOR
+   !
+   address-family ipv4
+      neighbor SPINE_NEIGHBOR activate
+      network 10.1.1.1/32
 !
 ```
 
@@ -142,19 +239,36 @@ interface Loopback0
 hostname Leaf2
 !
 interface Ethernet1
+   mtu 9000
    no switchport
    ip address 10.2.1.6/30
 !
 interface Ethernet2
+   mtu 9000
    no switchport
    ip address 10.2.2.6/30
 !
 interface Ethernet3
-   no switchport
-   ip address 192.168.2.1/24
+   mtu 9000
 !
 interface Loopback0
    ip address 10.1.2.1/32
+!
+ip routing
+!
+router bgp 65002
+   router-id 10.1.2.1
+   maximum-paths 2 ecmp 2
+   neighbor SPINE_NEIGHBOR peer group
+   neighbor SPINE_NEIGHBOR remote-as 65000
+   neighbor SPINE_NEIGHBOR out-delay 0
+   neighbor SPINE_NEIGHBOR bfd
+   neighbor 10.2.1.5 peer group SPINE_NEIGHBOR
+   neighbor 10.2.2.5 peer group SPINE_NEIGHBOR
+   !
+   address-family ipv4
+      neighbor SPINE_NEIGHBOR activate
+      network 10.1.2.1/32
 !
 ```
 
@@ -163,44 +277,60 @@ interface Loopback0
 hostname Leaf3
 !
 interface Ethernet1
+   mtu 9000
    no switchport
    ip address 10.2.1.10/30
 !
 interface Ethernet2
+   mtu 9000
    no switchport
    ip address 10.2.2.10/30
 !
 interface Ethernet3
-   no switchport
-   ip address 192.168.3.1/24
+   mtu 9000
 !
 interface Ethernet4
-   no switchport
-   ip address 192.168.4.1/24
+   mtu 9000
 !
 interface Loopback0
    ip address 10.1.3.1/32
 !
+ip routing
+!
+router bgp 65003
+   router-id 10.1.3.1
+   maximum-paths 2 ecmp 2
+   neighbor SPINE_NEIGHBOR peer group
+   neighbor SPINE_NEIGHBOR remote-as 65000
+   neighbor SPINE_NEIGHBOR out-delay 0
+   neighbor SPINE_NEIGHBOR bfd
+   neighbor 10.2.1.9 peer group SPINE_NEIGHBOR
+   neighbor 10.2.2.9 peer group SPINE_NEIGHBOR
+   !
+   address-family ipv4
+      neighbor SPINE_NEIGHBOR activate
+      network 10.1.3.1/32
+!
 ```
 #### Client 1
 ```
-VPCS> ip 192.168.1.100 255.255.255.0 192.168.1.1
+VPCS> ip 192.168.10.101 255.255.255.0 192.168.1.1
 ```
 #### Client 2
 ```
-VPCS> ip 192.168.2.100 255.255.255.0 192.168.2.1
+VPCS> ip 192.168.20.102 255.255.255.0 192.168.2.1
 ```
 #### Client 3
 ```
-VPCS> ip 192.168.3.100 255.255.255.0 192.168.3.1
+VPCS> ip 192.168.10.103 255.255.255.0 192.168.3.1
 ```
 #### Client 4
 ```
-VPCS> ip 192.168.4.100 255.255.255.0 192.168.4.1
+VPCS> ip 192.168.20.104 255.255.255.0 192.168.4.1
 ```
 </details>
 
-Нам необходимо настроить сеть таким образом, чтобы клиенты видели друг друга и могли передавать траффик. 
+Нам необходимо настроить сеть таким образом, чтобы клиенты находились в разных  разных VLAN видели друг друга и могли передавать траффик. 
 
 Для выполнения лабораторной работы выберем eBGP, так как этот протокол легче масштабировать. Соседство будем строить между внешними интерфейсами.
 
