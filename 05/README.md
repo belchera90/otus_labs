@@ -15,7 +15,7 @@ VxLAN. L2 VNI
 
 ### Топология сети
 
-![scheme_addr.png](scheme_addr2.png)
+![scheme_addr.png](scheme_addr3.png)
 
 ### Таблица адресов
 
