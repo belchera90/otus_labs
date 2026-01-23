@@ -344,28 +344,41 @@ switchport access vlan 10
 switchport access vlan 20
 ```
 
-Теперь настроим интерфейс VXLAN. Здесь мы указываем, что VTEP Source IP-адрес нужно брать с интерфейса Loopback0. Этот IP-адрес будет использоваться как внешний Source IP в VXLAN-пакетах. Далее мы задаем соответствие VLAN 10 к VNI 10010, а VLAN 20 к VNI 10020. Трафик из VLAN при выходе из VXLAN-интерфейса должен инкапсулироваться в VNI и наоборот, при получении пакета из overlay-сети, мы декапсулируем его из VXLAN и направляем в порты VLAN'ов.
+Теперь настроим интерфейс VXLAN. Здесь мы указываем, что VTEP Source IP-адрес нужно брать с интерфейса Loopback0. Этот IP-адрес будет использоваться как внешний Source IP в VXLAN-пакетах. Далее мы задаем соответствие VLAN 10 к VNI 10010, а VLAN 20 к VNI 10020. Трафик из VLAN при выходе из VXLAN-интерфейса должен инкапсулироваться в VNI и наоборот, при получении пакета из overlay-сети, мы декапсулируем его из VXLAN и направляем в порты VLAN'ов. Так же блокируем data-plane обучение VTEP от любых IP-адресов, кроме тех что разрешены EVPN control-plane (BGP).
+```
+interface Vxlan1
+   vxlan source-interface Loopback0
+   vxlan udp-port 4789
+   vxlan vlan ХХ vni 100ХХ
+   vxlan learn-restrict any
+!
 ```
 
+Отдельных нейборов для BGP-сессий для EVPN, в отличии от IPv4-BGP-сессий для underlay, где нейборы были определены по адресам интерфейсов линковочных сетей, мы прописывать будем исходя из loopback интерфейсов коммутаnоров(будем использовать peer группы). Здесь же разрешим отсылку расширенных комьюнити:
+```
+   neighbor ХХХ_NEIGHBOR_VXLAN update-source Loopback0
+   neighbor ХХХ_NEIGHBOR_VXLAN ebgp-multihop 3
+   neighbor ХХХ_NEIGHBOR_VXLAN send-community extended
 ```
 
-Отдельных нейборов для BGP-сессий для EVPN, в отличии от IPv4-BGP-сессий для underlay, где нейборы были определены по адресам интерфейсов линковочных сетей, мы прописывать будем исходя из loopback интерфейсов коммутаnоров(будем использовать peer группы):
+Теперьв глобальных настройках включим режим multi-agent, а так же включим AF EVPN в настройках процесса BGP:
+```
+service routing protocols model multi-agent
+   address-family evpn
+      neighbor ХХХ_NEIGHBOR_VXLAN activate
+   !
 ```
 
+Далее настроим описание VLANы в протоколе eBGP.
+Значение RD (Route Distinguisher) нужно установить для того, чтобы сделать уникальными маршруты к одному и тому же префиксу, но которые принадлежат разным VRF(чтобы BGP не пытался выбрать какой-то один из них как best path). Route Distinguisher зададим как auto (LoopbackIP:VID).
+
+Route target'ы нужно настроить для того, чтобы принимающий VTEP знал, в какой VRF установить ту или иную маршрутную информацию. Политика экспорта из VRF на анонсирующем VTEP должна совпадать с политикой импорта в VRF назначения на принимающем VTEP. Зададим route-target как 100:100 (как на импорт, так и на экспорт). Так же настроим распространение в EVPN информацию о всех изученных локально хостах в данных VLANах.:
 ```
-
-Теперь включим AF EVPN в настройках процесса BGP и активируем отсылку расширенных комьюнити::
-```
-
-```
-
-Далее настроим описание VLAN в протоколе eBGP. !!! Значение RD (Route Distinguisher) нужно для того, чтобы зауникалить маршруты к одному и тому же префиксу, но которые принадлежат разным VRF. Чтобы BGP не пытался выбрать какой-то один из них как best path и установить только его в FIB, мы и делаем эти маршруты уникальными с помощью задания значения RD. RD можно задавать в нескольких форматах, и они описаны в RFC, но, по сути, BGP не парсит эту информацию и не пытается разобрать структуру RD - для него это просто некое значение, делающее конкретный маршрут уникальным.
-
-Route target'ы нужны для того, чтобы принимающий VTEP знал, в какой VRF установить ту или иную маршрутную информацию. Политика экспорта из VRF на анонсирующем VTEP должна совпадать с политикой импорта в VRF назначения на принимающем VTEP. Например VTEP1 анонсирует маршруты для некоего EVI с export RT 1:1. VTEP2 установит их именно в тот MAC-VRF, на который настроена политика import RT 1:1. Если же такого MAC-VRF нет (ни на одном MAC-VRF не настроена политика import RT 1:1), то такой маршрут установлен на локальном VTEP не будет.
-
-Значит, в блоке выше мы настраиваем MAC-VRF для VLAN 100. Route Distinguisher зададим как auto, потому что механизм генерации RD у аристы по умолчанию нас вполне устраивает (LoopbackIP:VID). Далее мы задаем route-target как 100:100 (как на импорт, так и на экспорт), таким образов уникально обозначив конкретный MAC-VRF в пределах нашей фабрики. Ну и напоследок даем указание распространять в EVPN информацию о всех изученных локально хостах в данном VLAN. !!!Исправить!!!:
-```
-
+  vlan ХХ
+      rd auto
+      route-target both ХХ:100ХХ
+      redistribute learned
+   !
 ```
 
 Таким образом, итоговые конфигурации коммутаторов будут выглядеть так:
@@ -375,7 +388,11 @@ Route target'ы нужны для того, чтобы принимающий VT
   
 #### Spine 1
 ```
+service routing protocols model multi-agent
+!
 hostname Spine1
+!
+spanning-tree mode mstp
 !
 interface Ethernet1
    mtu 9000
@@ -402,10 +419,21 @@ peer-filter LEAF_PF
 !
 router bgp 65000
    router-id 10.0.1.1
+   maximum-paths 3 ecmp 3
    bgp listen range 10.2.1.0/28 peer-group LEAF_NEIGHBOR peer-filter LEAF_PF
+   bgp listen range 10.1.0.0/22 peer-group LEAF_NEIGHBOR_VXLAN peer-filter LEAF_PF
    neighbor LEAF_NEIGHBOR peer group
    neighbor LEAF_NEIGHBOR out-delay 0
    neighbor LEAF_NEIGHBOR bfd
+   neighbor LEAF_NEIGHBOR timers 3 9
+   neighbor LEAF_NEIGHBOR_VXLAN peer group
+   neighbor LEAF_NEIGHBOR_VXLAN next-hop-unchanged
+   neighbor LEAF_NEIGHBOR_VXLAN update-source Loopback0
+   neighbor LEAF_NEIGHBOR_VXLAN ebgp-multihop 3
+   neighbor LEAF_NEIGHBOR_VXLAN send-community extended
+   !
+   address-family evpn
+      neighbor LEAF_NEIGHBOR_VXLAN activate
    !
    address-family ipv4
       neighbor LEAF_NEIGHBOR activate
@@ -417,7 +445,11 @@ end
   
 #### Spine 2
 ```
+service routing protocols model multi-agent
+!
 hostname Spine2
+!
+spanning-tree mode mstp
 !
 interface Ethernet1
    mtu 9000
@@ -444,10 +476,21 @@ peer-filter LEAF_PF
 !
 router bgp 65000
    router-id 10.0.2.1
+   maximum-paths 3 ecmp 3
    bgp listen range 10.2.2.0/28 peer-group LEAF_NEIGHBOR peer-filter LEAF_PF
+   bgp listen range 10.1.0.0/22 peer-group LEAF_NEIGHBOR_VXLAN peer-filter LEAF_PF
    neighbor LEAF_NEIGHBOR peer group
    neighbor LEAF_NEIGHBOR out-delay 0
    neighbor LEAF_NEIGHBOR bfd
+   neighbor LEAF_NEIGHBOR timers 3 9
+   neighbor LEAF_NEIGHBOR_VXLAN peer group
+   neighbor LEAF_NEIGHBOR_VXLAN next-hop-unchanged
+   neighbor LEAF_NEIGHBOR_VXLAN update-source Loopback0
+   neighbor LEAF_NEIGHBOR_VXLAN ebgp-multihop 3
+   neighbor LEAF_NEIGHBOR_VXLAN send-community extended
+   !
+   address-family evpn
+      neighbor LEAF_NEIGHBOR_VXLAN activate
    !
    address-family ipv4
       neighbor LEAF_NEIGHBOR activate
@@ -455,12 +498,20 @@ router bgp 65000
 !
 end
 
+
 ```
   
 #### Leaf 1
 ```
 
+service routing protocols model multi-agent
+!
 hostname Leaf1
+!
+spanning-tree mode mstp
+!
+vlan 10
+   name L2_NET1
 !
 interface Ethernet1
    mtu 9000
@@ -474,11 +525,19 @@ interface Ethernet2
 !
 interface Ethernet3
    mtu 9000
-   no switchport
-   ip address 192.168.1.1/24
+   switchport access vlan 10
+   !
 !
 interface Loopback0
    ip address 10.1.1.1/32
+!
+interface Vlan10
+!
+interface Vxlan1
+   vxlan source-interface Loopback0
+   vxlan udp-port 4789
+   vxlan vlan 10 vni 10010
+   vxlan learn-restrict any
 !
 ip routing
 !
@@ -489,22 +548,45 @@ router bgp 65001
    neighbor SPINE_NEIGHBOR remote-as 65000
    neighbor SPINE_NEIGHBOR out-delay 0
    neighbor SPINE_NEIGHBOR bfd
+   neighbor SPINE_NEIGHBOR timers 3 9
+   neighbor SPINE_NEIGHBOR_VXLAN peer group
+   neighbor SPINE_NEIGHBOR_VXLAN remote-as 65000
+   neighbor SPINE_NEIGHBOR_VXLAN update-source Loopback0
+   neighbor SPINE_NEIGHBOR_VXLAN ebgp-multihop 3
+   neighbor SPINE_NEIGHBOR_VXLAN send-community extended
+   neighbor 10.0.1.1 peer group SPINE_NEIGHBOR_VXLAN
+   neighbor 10.0.2.1 peer group SPINE_NEIGHBOR_VXLAN
    neighbor 10.2.1.1 peer group SPINE_NEIGHBOR
    neighbor 10.2.2.1 peer group SPINE_NEIGHBOR
+   !
+   vlan 10
+      rd auto
+      route-target both 10:10010
+      redistribute learned
+   !
+   address-family evpn
+      neighbor SPINE_NEIGHBOR_VXLAN activate
    !
    address-family ipv4
       neighbor SPINE_NEIGHBOR activate
       network 10.1.1.1/32
-      network 192.168.1.0/24
 !
 end
+
 
 ```
 
 #### Leaf 2
 ```
 
+service routing protocols model multi-agent
+!
 hostname Leaf2
+!
+spanning-tree mode mstp
+!
+vlan 20
+   name L2_NET2
 !
 interface Ethernet1
    mtu 9000
@@ -518,11 +600,16 @@ interface Ethernet2
 !
 interface Ethernet3
    mtu 9000
-   no switchport
-   ip address 192.168.2.1/24
+   switchport access vlan 20
 !
 interface Loopback0
    ip address 10.1.2.1/32
+!
+interface Vxlan1
+   vxlan source-interface Loopback0
+   vxlan udp-port 4789
+   vxlan vlan 20 vni 10020
+   vxlan learn-restrict any
 !
 ip routing
 !
@@ -533,13 +620,28 @@ router bgp 65002
    neighbor SPINE_NEIGHBOR remote-as 65000
    neighbor SPINE_NEIGHBOR out-delay 0
    neighbor SPINE_NEIGHBOR bfd
+   neighbor SPINE_NEIGHBOR timers 3 9
+   neighbor SPINE_NEIGHBOR_VXLAN peer group
+   neighbor SPINE_NEIGHBOR_VXLAN remote-as 65000
+   neighbor SPINE_NEIGHBOR_VXLAN update-source Loopback0
+   neighbor SPINE_NEIGHBOR_VXLAN ebgp-multihop 3
+   neighbor SPINE_NEIGHBOR_VXLAN send-community extended
+   neighbor 10.0.1.1 peer group SPINE_NEIGHBOR_VXLAN
+   neighbor 10.0.2.1 peer group SPINE_NEIGHBOR_VXLAN
    neighbor 10.2.1.5 peer group SPINE_NEIGHBOR
    neighbor 10.2.2.5 peer group SPINE_NEIGHBOR
+   !
+   vlan 20
+      rd auto
+      route-target both 20:10020
+      redistribute learned
+   !
+   address-family evpn
+      neighbor SPINE_NEIGHBOR_VXLAN activate
    !
    address-family ipv4
       neighbor SPINE_NEIGHBOR activate
       network 10.1.2.1/32
-      network 192.168.2.0/24
 !
 end
 
@@ -547,7 +649,17 @@ end
 
 #### Leaf 3
 ```
+service routing protocols model multi-agent
+!
 hostname Leaf3
+!
+spanning-tree mode mstp
+!
+vlan 10
+   name L2_NET1
+!
+vlan 20
+   name L2_NET2
 !
 interface Ethernet1
    mtu 9000
@@ -561,16 +673,21 @@ interface Ethernet2
 !
 interface Ethernet3
    mtu 9000
-   no switchport
-   ip address 192.168.3.1/24
+   switchport access vlan 10
 !
 interface Ethernet4
    mtu 9000
-   no switchport
-   ip address 192.168.4.1/24
+   switchport access vlan 20
 !
 interface Loopback0
    ip address 10.1.3.1/32
+!
+interface Vxlan1
+   vxlan source-interface Loopback0
+   vxlan udp-port 4789
+   vxlan vlan 10 vni 10010
+   vxlan vlan 20 vni 10020
+   vxlan learn-restrict any
 !
 ip routing
 !
@@ -581,14 +698,33 @@ router bgp 65003
    neighbor SPINE_NEIGHBOR remote-as 65000
    neighbor SPINE_NEIGHBOR out-delay 0
    neighbor SPINE_NEIGHBOR bfd
+   neighbor SPINE_NEIGHBOR timers 3 9
+   neighbor SPINE_NEIGHBOR_VXLAN peer group
+   neighbor SPINE_NEIGHBOR_VXLAN remote-as 65000
+   neighbor SPINE_NEIGHBOR_VXLAN update-source Loopback0
+   neighbor SPINE_NEIGHBOR_VXLAN ebgp-multihop 3
+   neighbor SPINE_NEIGHBOR_VXLAN send-community extended
+   neighbor 10.0.1.1 peer group SPINE_NEIGHBOR_VXLAN
+   neighbor 10.0.2.1 peer group SPINE_NEIGHBOR_VXLAN
    neighbor 10.2.1.9 peer group SPINE_NEIGHBOR
    neighbor 10.2.2.9 peer group SPINE_NEIGHBOR
+   !
+   vlan 10
+      rd auto
+      route-target both 10:10010
+      redistribute learned
+   !
+   vlan 20
+      rd auto
+      route-target both 20:10020
+      redistribute learned
+   !
+   address-family evpn
+      neighbor SPINE_NEIGHBOR_VXLAN activate
    !
    address-family ipv4
       neighbor SPINE_NEIGHBOR activate
       network 10.1.3.1/32
-      network 192.168.3.0/24
-      network 192.168.4.0/24
 !
 end
 
@@ -597,7 +733,7 @@ end
 
 После настройки на сетевых устройствах протокола маршрутизации проверим результаты.
 
- Пробуем с Client1 "достучаться" до Client2, Client3 и Client4:
+ Пробуем с Client1 "достучаться" до Client3(VLA10),а с Client2 до Client4(VLAN20):
  #### Clients
  ![ping.png](ping.png)
  
