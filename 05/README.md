@@ -786,306 +786,205 @@ Neighbor           AS Session State AFI/SAFI                AFI/SAFI State   NLR
 
 Как видим EVPN соседи активны.
  
- Так же проверим Route Table на каждом коммутаторе:
+ Так же посмотрим EVPN маршруты типа 2 и 3 на каждом leaf-коммутаторе:
  
  <details>
- <summary> Route Table </summary>
-   
- #### Spine 1
- ```
-
-VRF: default
-Codes: C - connected, S - static, K - kernel,
-       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
-       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
-       N2 - OSPF NSSA external type2, B - Other BGP Routes,
-       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
-       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
-       A O - OSPF Summary, NG - Nexthop Group Static Route,
-       V - VXLAN Control Service, M - Martian,
-       DH - DHCP client installed default route,
-       DP - Dynamic Policy Route, L - VRF Leaked,
-       G  - gRIBI, RC - Route Cache Route
-
-Gateway of last resort is not set
-
- C        10.0.1.1/32 is directly connected, Loopback0
- B E      10.1.1.1/32 [200/0] via 10.2.1.2, Ethernet1
- B E      10.1.2.1/32 [200/0] via 10.2.1.6, Ethernet2
- B E      10.1.3.1/32 [200/0] via 10.2.1.10, Ethernet3
- C        10.2.1.0/30 is directly connected, Ethernet1
- C        10.2.1.4/30 is directly connected, Ethernet2
- C        10.2.1.8/30 is directly connected, Ethernet3
- B E      192.168.1.0/24 [200/0] via 10.2.1.2, Ethernet1
- B E      192.168.2.0/24 [200/0] via 10.2.1.6, Ethernet2
- B E      192.168.3.0/24 [200/0] via 10.2.1.10, Ethernet3
- B E      192.168.4.0/24 [200/0] via 10.2.1.10, Ethernet3
-
-
- ```
-
- #### Spine 2
- ```
-
-VRF: default
-Codes: C - connected, S - static, K - kernel,
-       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
-       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
-       N2 - OSPF NSSA external type2, B - Other BGP Routes,
-       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
-       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
-       A O - OSPF Summary, NG - Nexthop Group Static Route,
-       V - VXLAN Control Service, M - Martian,
-       DH - DHCP client installed default route,
-       DP - Dynamic Policy Route, L - VRF Leaked,
-       G  - gRIBI, RC - Route Cache Route
-
-Gateway of last resort is not set
-
- C        10.0.2.1/32 is directly connected, Loopback0
- B E      10.1.1.1/32 [200/0] via 10.2.2.2, Ethernet1
- B E      10.1.2.1/32 [200/0] via 10.2.2.6, Ethernet2
- B E      10.1.3.1/32 [200/0] via 10.2.2.10, Ethernet3
- C        10.2.2.0/30 is directly connected, Ethernet1
- C        10.2.2.4/30 is directly connected, Ethernet2
- C        10.2.2.8/30 is directly connected, Ethernet3
- B E      192.168.1.0/24 [200/0] via 10.2.2.2, Ethernet1
- B E      192.168.2.0/24 [200/0] via 10.2.2.6, Ethernet2
- B E      192.168.3.0/24 [200/0] via 10.2.2.10, Ethernet3
- B E      192.168.4.0/24 [200/0] via 10.2.2.10, Ethernet3
-
-
- ```
+ <summary> Type 2,3 </summary>
+ 
 
  #### Leaf 1
  ```
 
-VRF: default
-Codes: C - connected, S - static, K - kernel,
-       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
-       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
-       N2 - OSPF NSSA external type2, B - Other BGP Routes,
-       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
-       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
-       A O - OSPF Summary, NG - Nexthop Group Static Route,
-       V - VXLAN Control Service, M - Martian,
-       DH - DHCP client installed default route,
-       DP - Dynamic Policy Route, L - VRF Leaked,
-       G  - gRIBI, RC - Route Cache Route
+Leaf1#sh bgp evpn
+BGP routing table information for VRF default
+Router identifier 10.1.1.1, local AS number 65001
+Route status codes: * - valid, > - active, S - Stale, E - ECMP head, e - ECMP
+                    c - Contributing to ECMP, % - Pending BGP convergence
+Origin codes: i - IGP, e - EGP, ? - incomplete
+AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Link Local Nexthop
 
-Gateway of last resort is not set
-
- B E      10.0.1.1/32 [200/0] via 10.2.1.1, Ethernet1
- B E      10.0.2.1/32 [200/0] via 10.2.2.1, Ethernet2
- C        10.1.1.1/32 is directly connected, Loopback0
- B E      10.1.2.1/32 [200/0] via 10.2.1.1, Ethernet1
-                              via 10.2.2.1, Ethernet2
- B E      10.1.3.1/32 [200/0] via 10.2.1.1, Ethernet1
-                              via 10.2.2.1, Ethernet2
- C        10.2.1.0/30 is directly connected, Ethernet1
- C        10.2.2.0/30 is directly connected, Ethernet2
- C        192.168.1.0/24 is directly connected, Ethernet3
- B E      192.168.2.0/24 [200/0] via 10.2.1.1, Ethernet1
-                                 via 10.2.2.1, Ethernet2
- B E      192.168.3.0/24 [200/0] via 10.2.1.1, Ethernet1
-                                 via 10.2.2.1, Ethernet2
- B E      192.168.4.0/24 [200/0] via 10.2.1.1, Ethernet1
-                                 via 10.2.2.1, Ethernet2
-
+          Network                Next Hop              Metric  LocPref Weight  Path
+ * >      RD: 10.1.1.1:10 mac-ip 0050.7966.6806
+                                 -                     -       -       0       i
+ * >Ec    RD: 10.1.2.1:20 mac-ip 0050.7966.6807
+                                 10.1.2.1              -       100     0       65000 65002 i
+ *  ec    RD: 10.1.2.1:20 mac-ip 0050.7966.6807
+                                 10.1.2.1              -       100     0       65000 65002 i
+ * >Ec    RD: 10.1.3.1:10 mac-ip 0050.7966.6808
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:10 mac-ip 0050.7966.6808
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >Ec    RD: 10.1.3.1:20 mac-ip 0050.7966.6809
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:20 mac-ip 0050.7966.6809
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >      RD: 10.1.1.1:10 imet 10.1.1.1
+                                 -                     -       -       0       i
+ * >Ec    RD: 10.1.2.1:20 imet 10.1.2.1
+                                 10.1.2.1              -       100     0       65000 65002 i
+ *  ec    RD: 10.1.2.1:20 imet 10.1.2.1
+                                 10.1.2.1              -       100     0       65000 65002 i
+ * >Ec    RD: 10.1.3.1:10 imet 10.1.3.1
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:10 imet 10.1.3.1
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >Ec    RD: 10.1.3.1:20 imet 10.1.3.1
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:20 imet 10.1.3.1
+                                 10.1.3.1              -       100     0       65000 65003 i
+Leaf1#
 
  ```
 
  #### Leaf 2
  ```
 
-VRF: default
-Codes: C - connected, S - static, K - kernel,
-       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
-       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
-       N2 - OSPF NSSA external type2, B - Other BGP Routes,
-       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
-       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
-       A O - OSPF Summary, NG - Nexthop Group Static Route,
-       V - VXLAN Control Service, M - Martian,
-       DH - DHCP client installed default route,
-       DP - Dynamic Policy Route, L - VRF Leaked,
-       G  - gRIBI, RC - Route Cache Route
+Leaf2#sh bgp evpn
+BGP routing table information for VRF default
+Router identifier 10.1.2.1, local AS number 65002
+Route status codes: * - valid, > - active, S - Stale, E - ECMP head, e - ECMP
+                    c - Contributing to ECMP, % - Pending BGP convergence
+Origin codes: i - IGP, e - EGP, ? - incomplete
+AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Link Local Nexthop
 
-Gateway of last resort is not set
-
- B E      10.0.1.1/32 [200/0] via 10.2.1.5, Ethernet1
- B E      10.0.2.1/32 [200/0] via 10.2.2.5, Ethernet2
- B E      10.1.1.1/32 [200/0] via 10.2.1.5, Ethernet1
-                              via 10.2.2.5, Ethernet2
- C        10.1.2.1/32 is directly connected, Loopback0
- B E      10.1.3.1/32 [200/0] via 10.2.1.5, Ethernet1
-                              via 10.2.2.5, Ethernet2
- C        10.2.1.4/30 is directly connected, Ethernet1
- C        10.2.2.4/30 is directly connected, Ethernet2
- B E      192.168.1.0/24 [200/0] via 10.2.1.5, Ethernet1
-                                 via 10.2.2.5, Ethernet2
- C        192.168.2.0/24 is directly connected, Ethernet3
- B E      192.168.3.0/24 [200/0] via 10.2.1.5, Ethernet1
-                                 via 10.2.2.5, Ethernet2
- B E      192.168.4.0/24 [200/0] via 10.2.1.5, Ethernet1
-                                 via 10.2.2.5, Ethernet2
-
+          Network                Next Hop              Metric  LocPref Weight  Path
+ * >Ec    RD: 10.1.1.1:10 mac-ip 0050.7966.6806
+                                 10.1.1.1              -       100     0       65000 65001 i
+ *  ec    RD: 10.1.1.1:10 mac-ip 0050.7966.6806
+                                 10.1.1.1              -       100     0       65000 65001 i
+ * >      RD: 10.1.2.1:20 mac-ip 0050.7966.6807
+                                 -                     -       -       0       i
+ * >Ec    RD: 10.1.3.1:10 mac-ip 0050.7966.6808
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:10 mac-ip 0050.7966.6808
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >Ec    RD: 10.1.3.1:20 mac-ip 0050.7966.6809
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:20 mac-ip 0050.7966.6809
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >Ec    RD: 10.1.1.1:10 imet 10.1.1.1
+                                 10.1.1.1              -       100     0       65000 65001 i
+ *  ec    RD: 10.1.1.1:10 imet 10.1.1.1
+                                 10.1.1.1              -       100     0       65000 65001 i
+ * >      RD: 10.1.2.1:20 imet 10.1.2.1
+                                 -                     -       -       0       i
+ * >Ec    RD: 10.1.3.1:10 imet 10.1.3.1
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:10 imet 10.1.3.1
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >Ec    RD: 10.1.3.1:20 imet 10.1.3.1
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:20 imet 10.1.3.1
+                                 10.1.3.1              -       100     0       65000 65003 i
 
  ```
 
  #### Leaf 3
  ```
 
-VRF: default
-Codes: C - connected, S - static, K - kernel,
-       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
-       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
-       N2 - OSPF NSSA external type2, B - Other BGP Routes,
-       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
-       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
-       A O - OSPF Summary, NG - Nexthop Group Static Route,
-       V - VXLAN Control Service, M - Martian,
-       DH - DHCP client installed default route,
-       DP - Dynamic Policy Route, L - VRF Leaked,
-       G  - gRIBI, RC - Route Cache Route
+Leaf3#sh bgp evpn
+BGP routing table information for VRF default
+Router identifier 10.1.3.1, local AS number 65003
+Route status codes: * - valid, > - active, S - Stale, E - ECMP head, e - ECMP
+                    c - Contributing to ECMP, % - Pending BGP convergence
+Origin codes: i - IGP, e - EGP, ? - incomplete
+AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Link Local Nexthop
 
-Gateway of last resort is not set
-
- B E      10.0.1.1/32 [200/0] via 10.2.1.9, Ethernet1
- B E      10.0.2.1/32 [200/0] via 10.2.2.9, Ethernet2
- B E      10.1.1.1/32 [200/0] via 10.2.1.9, Ethernet1
-                              via 10.2.2.9, Ethernet2
- B E      10.1.2.1/32 [200/0] via 10.2.1.9, Ethernet1
-                              via 10.2.2.9, Ethernet2
- C        10.1.3.1/32 is directly connected, Loopback0
- C        10.2.1.8/30 is directly connected, Ethernet1
- C        10.2.2.8/30 is directly connected, Ethernet2
- B E      192.168.1.0/24 [200/0] via 10.2.1.9, Ethernet1
-                                 via 10.2.2.9, Ethernet2
- B E      192.168.2.0/24 [200/0] via 10.2.1.9, Ethernet1
-                                 via 10.2.2.9, Ethernet2
- C        192.168.3.0/24 is directly connected, Ethernet3
- C        192.168.4.0/24 is directly connected, Ethernet4
-
+          Network                Next Hop              Metric  LocPref Weight  Path
+ * >Ec    RD: 10.1.1.1:10 mac-ip 0050.7966.6806
+                                 10.1.1.1              -       100     0       65000 65001 i
+ *  ec    RD: 10.1.1.1:10 mac-ip 0050.7966.6806
+                                 10.1.1.1              -       100     0       65000 65001 i
+ * >Ec    RD: 10.1.2.1:20 mac-ip 0050.7966.6807
+                                 10.1.2.1              -       100     0       65000 65002 i
+ *  ec    RD: 10.1.2.1:20 mac-ip 0050.7966.6807
+                                 10.1.2.1              -       100     0       65000 65002 i
+ * >      RD: 10.1.3.1:10 mac-ip 0050.7966.6808
+                                 -                     -       -       0       i
+ * >      RD: 10.1.3.1:20 mac-ip 0050.7966.6809
+                                 -                     -       -       0       i
+ * >Ec    RD: 10.1.1.1:10 imet 10.1.1.1
+                                 10.1.1.1              -       100     0       65000 65001 i
+ *  ec    RD: 10.1.1.1:10 imet 10.1.1.1
+                                 10.1.1.1              -       100     0       65000 65001 i
+ * >Ec    RD: 10.1.2.1:20 imet 10.1.2.1
+                                 10.1.2.1              -       100     0       65000 65002 i
+ *  ec    RD: 10.1.2.1:20 imet 10.1.2.1
+                                 10.1.2.1              -       100     0       65000 65002 i
+ * >      RD: 10.1.3.1:10 imet 10.1.3.1
+                                 -                     -       -       0       i
+ * >      RD: 10.1.3.1:20 imet 10.1.3.1
+                                 -                     -       -       0       i
 
  ```
 </details>
-Как видим, в таблицах маршрутизации присутствуют маршруты, полученные из протокола eBGP.</br>
+Как видим, достигается полная связность с использованием протокола ECMP: любой хост → любой хост по VXLAN.</br>
 </br>
-Проверим состояние подключения лифов к спайнам:
+Проверим таблицы мак адресов:
 
  #### Leaf 1
  ```
-BGP summary information for VRF default
-Router identifier 10.1.1.1, local AS number 65001
-Neighbor Status Codes: m - Under maintenance
-  Neighbor         V  AS           MsgRcvd   MsgSent  InQ OutQ  Up/Down State   PfxRcd PfxAcc
-  10.2.1.1         4  65000          14664     14667    0    0 00:26:11 Estab   6      6
-  10.2.2.1         4  65000          14663     14671    0    0 00:26:09 Estab   6      6
+Leaf1#sh mac address-table
+          Mac Address Table
+------------------------------------------------------------------
+
+Vlan    Mac Address       Type        Ports      Moves   Last Move
+----    -----------       ----        -----      -----   ---------
+  10    0050.7966.6806    DYNAMIC     Et3        1       0:04:37 ago
+  10    0050.7966.6808    DYNAMIC     Vx1        1       0:04:32 ago
+Total Mac Addresses for this criterion: 2
+
+          Multicast Mac Address Table
+------------------------------------------------------------------
+
+Vlan    Mac Address       Type        Ports
+----    -----------       ----        -----
+Total Mac Addresses for this criterion: 0
+
  ```
  #### Leaf 2
  ```
-BGP summary information for VRF default
-Router identifier 10.1.2.1, local AS number 65002
-Neighbor Status Codes: m - Under maintenance
-  Neighbor         V  AS           MsgRcvd   MsgSent  InQ OutQ  Up/Down State   PfxRcd PfxAcc
-  10.2.1.5         4  65000          13691     13691    0    0 00:36:48 Estab   6      6
-  10.2.2.5         4  65000          13691     13695    0    0 00:36:04 Estab   6      6
+Leaf2#sh mac address-table
+          Mac Address Table
+------------------------------------------------------------------
+
+Vlan    Mac Address       Type        Ports      Moves   Last Move
+----    -----------       ----        -----      -----   ---------
+  20    0050.7966.6807    DYNAMIC     Et3        1       0:04:52 ago
+  20    0050.7966.6809    DYNAMIC     Vx1        1       0:04:47 ago
+Total Mac Addresses for this criterion: 2
+
+          Multicast Mac Address Table
+------------------------------------------------------------------
+
+Vlan    Mac Address       Type        Ports
+----    -----------       ----        -----
+Total Mac Addresses for this criterion: 0
+
  ```
  #### Leaf 3
  ```
-BGP summary information for VRF default
-Router identifier 10.1.3.1, local AS number 65003
-Neighbor Status Codes: m - Under maintenance
-  Neighbor         V  AS           MsgRcvd   MsgSent  InQ OutQ  Up/Down State   PfxRcd PfxAcc
-  10.2.1.9         4  65000          13470     13471    0    0 00:37:13 Estab   5      5
-  10.2.2.9         4  65000          13469     13472    0    0 00:36:29 Estab   5      5
+Leaf3#sh mac address-table
+          Mac Address Table
+------------------------------------------------------------------
+
+Vlan    Mac Address       Type        Ports      Moves   Last Move
+----    -----------       ----        -----      -----   ---------
+  10    0050.7966.6806    DYNAMIC     Vx1        1       0:05:08 ago
+  10    0050.7966.6808    DYNAMIC     Et3        1       0:05:05 ago
+  20    0050.7966.6807    DYNAMIC     Vx1        1       0:05:06 ago
+  20    0050.7966.6809    DYNAMIC     Et4        1       0:05:03 ago
+Total Mac Addresses for this criterion: 4
+
+          Multicast Mac Address Table
+------------------------------------------------------------------
+
+Vlan    Mac Address       Type        Ports
+----    -----------       ----        -----
+Total Mac Addresses for this criterion: 0
+
 
  ```
 
-Как видим, все соединения в состоянии established.
+Как видим, все mac адреса корректно изучаются на всех лифах.
 
-
-Так же посмотрим на работу протокола ECMP:
-
- #### Leaf 1
- ```
-BGP routing table information for VRF default
-Router identifier 10.1.1.1, local AS number 65001
-Route status codes: * - valid, > - active, # - not installed, E - ECMP head, e - ECMP
-                    S - Stale, c - Contributing to ECMP, b - backup, L - labeled-unicast
-Origin codes: i - IGP, e - EGP, ? - incomplete
-AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Link Local Nexthop
-
-         Network                Next Hop            Metric  LocPref Weight  Path
- * >     10.0.1.1/32            10.2.1.1              0       100     0       65000 i
- * >     10.0.2.1/32            10.2.2.1              0       100     0       65000 i
- * >     10.1.1.1/32            -                     0       0       -       i
- * >Ec   10.1.2.1/32            10.2.1.1              0       100     0       65000 65002 i
- *  ec   10.1.2.1/32            10.2.2.1              0       100     0       65000 65002 i
- * >Ec   10.1.3.1/32            10.2.1.1              0       100     0       65000 65003 i
- *  ec   10.1.3.1/32            10.2.2.1              0       100     0       65000 65003 i
- * >     192.168.1.0/24         -                     1       0       -       i
- * >Ec   192.168.2.0/24         10.2.1.1              0       100     0       65000 65002 i
- *  ec   192.168.2.0/24         10.2.2.1              0       100     0       65000 65002 i
- * >Ec   192.168.3.0/24         10.2.1.1              0       100     0       65000 65003 i
- *  ec   192.168.3.0/24         10.2.2.1              0       100     0       65000 65003 i
- * >Ec   192.168.4.0/24         10.2.1.1              0       100     0       65000 65003 i
- *  ec   192.168.4.0/24         10.2.2.1              0       100     0       65000 65003 i
-
- ```
-
- #### Leaf 2
- ```
-BGP routing table information for VRF default
-Router identifier 10.1.2.1, local AS number 65002
-Route status codes: * - valid, > - active, # - not installed, E - ECMP head, e - ECMP
-                    S - Stale, c - Contributing to ECMP, b - backup, L - labeled-unicast
-Origin codes: i - IGP, e - EGP, ? - incomplete
-AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Link Local Nexthop
-
-         Network                Next Hop            Metric  LocPref Weight  Path
- * >     10.0.1.1/32            10.2.1.5              0       100     0       65000 i
- * >     10.0.2.1/32            10.2.2.5              0       100     0       65000 i
- * >Ec   10.1.1.1/32            10.2.1.5              0       100     0       65000 65001 i
- *  ec   10.1.1.1/32            10.2.2.5              0       100     0       65000 65001 i
- * >     10.1.2.1/32            -                     0       0       -       i
- * >Ec   10.1.3.1/32            10.2.1.5              0       100     0       65000 65003 i
- *  ec   10.1.3.1/32            10.2.2.5              0       100     0       65000 65003 i
- * >Ec   192.168.1.0/24         10.2.1.5              0       100     0       65000 65001 i
- *  ec   192.168.1.0/24         10.2.2.5              0       100     0       65000 65001 i
- * >     192.168.2.0/24         -                     1       0       -       i
- * >Ec   192.168.3.0/24         10.2.1.5              0       100     0       65000 65003 i
- *  ec   192.168.3.0/24         10.2.2.5              0       100     0       65000 65003 i
- * >Ec   192.168.4.0/24         10.2.1.5              0       100     0       65000 65003 i
- *  ec   192.168.4.0/24         10.2.2.5              0       100     0       65000 65003 i
-
- ```
-
- #### Leaf 3
- ```
-BGP routing table information for VRF default
-Router identifier 10.1.3.1, local AS number 65003
-Route status codes: * - valid, > - active, # - not installed, E - ECMP head, e P
-                    S - Stale, c - Contributing to ECMP, b - backup, L - labelet
-Origin codes: i - IGP, e - EGP, ? - incomplete
-AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Lp
-
-         Network                Next Hop            Metric  LocPref Weight  Path
- * >     10.0.1.1/32            10.2.1.9              0       100     0       6i
- * >     10.0.2.1/32            10.2.2.9              0       100     0       6i
- * >Ec   10.1.1.1/32            10.2.1.9              0       100     0       6i
- *  ec   10.1.1.1/32            10.2.2.9              0       100     0       6i
- * >Ec   10.1.2.1/32            10.2.1.9              0       100     0       6i
- *  ec   10.1.2.1/32            10.2.2.9              0       100     0       6i
- * >     10.1.3.1/32            -                     0       0       -       i
- * >Ec   192.168.1.0/24         10.2.1.9              0       100     0       6i
- *  ec   192.168.1.0/24         10.2.2.9              0       100     0       6i
- * >Ec   192.168.2.0/24         10.2.1.9              0       100     0       6i
- *  ec   192.168.2.0/24         10.2.2.9              0       100     0       6i
- * >     192.168.3.0/24         -                     1       0       -       i
- * >     192.168.4.0/24         -                     1       0       -       i
-
- ```
-
-Как видим, ECMP отрабатывает корректно.
