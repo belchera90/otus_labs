@@ -346,8 +346,8 @@ VPCS> ip 192.168.40.104 255.255.255.0 192.168.40.254
 Определим Client 1  во влан VLAN 10, в Client 2 во VLAN 20, Client 3 во влан VLAN 30 и Client 4 во влан VLAN 40. Так же создадим VRF для транзитного VNI и включим в нем роутинг: 
 
 ```
-switchport access vlan 10
-switchport access vlan 20
+switchport access vlan Х0
+vxlan vrf CON_VRF vni 10100
 ```
 
 Теперь настроим интерфейс VXLAN. Здесь мы указываем, что VTEP Source IP-адрес нужно брать с интерфейса Loopback0. Этот IP-адрес будет использоваться как внешний Source IP в VXLAN-пакетах. Далее мы задаем соответствие VLAN 10 к VNI 10010, VLAN 20 к VNI 10020, VLAN 30 к VNI 10030, а VLAN 40 к VNI 10040. Затем введем транзитный VNI 10100 и привяжем его к созданному VRF. Так же блокируем data-plane обучение VTEP от любых IP-адресов, кроме тех что разрешены EVPN control-plane (BGP).
@@ -360,21 +360,28 @@ interface Vxlan1
 !
 ```
 
-В качестве шлюзов по умолчанию будут использоваться статические anycast-шлюзы(SAG), то есть на каждом Leaf'е в каждом VNI будет создан интерфейс и назначен IP-адрес(SVI для каждого VLAN), который будет служить адресом шлюза по умолчанию для локально подключенных клиентов. Для этого мы настраиваем одинаковый IP алрес на каждом IRB-интерфейсе конкретного VNI, а так же одинаковый MAC адрес:
+В качестве шлюзов по умолчанию будут использоваться статические anycast-шлюзы(SAG), то есть на каждом Leaf'е в каждом VNI будет создан интерфейс и назначен IP-адрес(SVI для каждого VLAN), который будет служить адресом шлюза по умолчанию для локально подключенных клиентов. Для этого мы настраиваем одинаковый IP адрес на каждом IRB-интерфейсе конкретного VNI, а так же одинаковый MAC адрес:
 ```
-   neighbor ХХХ_NEIGHBOR_VXLAN update-source Loopback0
-   neighbor ХХХ_NEIGHBOR_VXLAN ebgp-multihop 3
-   neighbor ХХХ_NEIGHBOR_VXLAN send-community extended
+ip virtual-router address 192.168.Х0.254/24
+ip virtual-router mac-address 12:00:00:00:00:00
+!
 ```
 
-Далее настроим описание VLANы и VRF в протоколе eBGP.
+Далее включим режим multi-agent и настроим описание VLANы и VRF в протоколе eBGP.
 Значение RD (Route Distinguisher) нужно установить для того, чтобы сделать уникальными маршруты к одному и тому же префиксу, но которые принадлежат разным VLANам. Политика экспорта из VLAN на анонсирующем VTEP должна совпадать с политикой импорта в VLAN назначения на принимающем VTEP. Зададим route-target как хх:100хх (как на импорт, так и на экспорт). Так же настроим распространение в EVPN информацию о всех изученных локально хостах в данных VLANах. В описании VRF так же настроим RD и RT, но с учетом того, что здесь надо уточнить семейство EVPN:
 ```
+service routing protocols model multi-agent
+!
   vlan ХХ
       rd auto
       route-target both ХХ:100ХХ
       redistribute learned
    !
+   vrf CON_VRF
+      rd 10.1.X.1:100
+      route-target import evpn 100:10100
+      route-target export evpn 100:10100
+   !   
 ```
 
 Таким образом, итоговые конфигурации коммутаторов будут выглядеть так:
@@ -651,11 +658,13 @@ hostname Leaf3
 !
 spanning-tree mode mstp
 !
-vlan 10
-   name L2_NET1
+vlan 30
+   name L3_NET3
 !
-vlan 20
-   name L2_NET2
+vlan 40
+   name L3_NET4
+!
+vrf instance CON_VRF
 !
 interface Ethernet1
    mtu 9000
@@ -669,23 +678,50 @@ interface Ethernet2
 !
 interface Ethernet3
    mtu 9000
-   switchport access vlan 10
+   switchport access vlan 30
 !
 interface Ethernet4
    mtu 9000
-   switchport access vlan 20
+   switchport access vlan 40
+!
+interface Ethernet4
+!
+interface Ethernet5
+!
+interface Ethernet6
+!
+interface Ethernet7
+!
+interface Ethernet8
 !
 interface Loopback0
    ip address 10.1.3.1/32
 !
+interface Management1
+!
 interface Vxlan1
    vxlan source-interface Loopback0
    vxlan udp-port 4789
-   vxlan vlan 10 vni 10010
-   vxlan vlan 20 vni 10020
+   vxlan vlan 30 vni 10030
+   vxlan vlan 40 vni 10040
+   vxlan vrf CON_VRF vni 10100
    vxlan learn-restrict any
 !
+interface Vlan30
+   vrf CON_VRF
+   ip address 192.168.30.203/24
+   ip virtual-router address 192.168.30.254/24
+!
+interface Vlan40
+   vrf CON_VRF
+   ip address 192.168.40.204/24
+   ip virtual-router address 192.168.40.254/24
+!
 ip routing
+!
+ip routing vrf CON_VRF
+!
+ip virtual-router mac-address 12:00:00:00:00:00
 !
 router bgp 65003
    router-id 10.1.3.1
@@ -705,16 +741,21 @@ router bgp 65003
    neighbor 10.2.1.9 peer group SPINE_NEIGHBOR
    neighbor 10.2.2.9 peer group SPINE_NEIGHBOR
    !
-   vlan 10
+   vlan 30
       rd auto
-      route-target both 10:10010
+      route-target both 30:10030
       redistribute learned
    !
-   vlan 20
+   vlan 40
       rd auto
-      route-target both 20:10020
+      route-target both 40:10040
       redistribute learned
    !
+   vrf CON_VRF
+    rd 10.1.3.1:100
+    route-target import evpn 100:10100
+    route-target export evpn 100:10100
+   !   
    address-family evpn
       neighbor SPINE_NEIGHBOR_VXLAN activate
    !
