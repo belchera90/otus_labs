@@ -514,7 +514,9 @@ hostname Leaf1
 spanning-tree mode mstp
 !
 vlan 10
-   name L2_NET1
+   name L3_NET1
+!
+vrf instance CON_VRF
 !
 interface Ethernet1
    mtu 9000
@@ -531,18 +533,38 @@ interface Ethernet3
    switchport access vlan 10
    !
 !
+interface Ethernet4
+!
+interface Ethernet5
+!
+interface Ethernet6
+!
+interface Ethernet7
+!
+interface Ethernet8
+!
 interface Loopback0
    ip address 10.1.1.1/32
 !
-interface Vlan10
+interface Management1
 !
 interface Vxlan1
    vxlan source-interface Loopback0
    vxlan udp-port 4789
    vxlan vlan 10 vni 10010
+   vxlan vrf CON_VRF vni 10100
    vxlan learn-restrict any
 !
+interface Vlan10
+   vrf CON_VRF
+   ip address 192.168.10.201/24
+   ip virtual-router address 192.168.10.254/24
+!
 ip routing
+!
+ip routing vrf CON_VRF
+!
+ip virtual-router mac-address 12:00:00:00:00:00
 !
 router bgp 65001
    router-id 10.1.1.1
@@ -567,6 +589,11 @@ router bgp 65001
       route-target both 10:10010
       redistribute learned
    !
+   vrf CON_VRF
+    rd 10.1.1.1:100
+    route-target import evpn 100:10100
+    route-target export evpn 100:10100
+   !   
    address-family evpn
       neighbor SPINE_NEIGHBOR_VXLAN activate
    !
@@ -589,7 +616,9 @@ hostname Leaf2
 spanning-tree mode mstp
 !
 vlan 20
-   name L2_NET2
+   name L3_NET2
+!
+vrf instance CON_VRF
 !
 interface Ethernet1
    mtu 9000
@@ -605,16 +634,38 @@ interface Ethernet3
    mtu 9000
    switchport access vlan 20
 !
+interface Ethernet4
+!
+interface Ethernet5
+!
+interface Ethernet6
+!
+interface Ethernet7
+!
+interface Ethernet8
+!
 interface Loopback0
    ip address 10.1.2.1/32
+!
+interface Management1
 !
 interface Vxlan1
    vxlan source-interface Loopback0
    vxlan udp-port 4789
    vxlan vlan 20 vni 10020
+   vxlan vrf CON_VRF vni 10100
    vxlan learn-restrict any
 !
+interface Vlan20
+   vrf CON_VRF
+   ip address 192.168.20.202/24
+   ip virtual-router address 192.168.20.254/24
+!
 ip routing
+!
+ip routing vrf CON_VRF
+!
+ip virtual-router mac-address 12:00:00:00:00:00
 !
 router bgp 65002
    router-id 10.1.2.1
@@ -639,6 +690,11 @@ router bgp 65002
       route-target both 20:10020
       redistribute learned
    !
+   vrf CON_VRF
+    rd 10.1.2.1:100
+    route-target import evpn 100:10100
+    route-target export evpn 100:10100
+   !   
    address-family evpn
       neighbor SPINE_NEIGHBOR_VXLAN activate
    !
@@ -770,12 +826,11 @@ end
 
 После настройки на сетевых устройствах протокола маршрутизации проверим результаты.
 
- Пробуем с Client1 "достучаться" до Client3(VLA10),а с Client2 до Client4(VLAN20):
+ Пробуем с Client1 "достучаться" до Client2(VLA20), Client3(VLA30) и до Client4(VLAN40):
  #### Clients
- ![pingl2cl1.png](pingl2cl1.png)
- ![pingl2cl2.png](pingl2cl2.png)
- 
- Как видим Client1 видит Client3, а Client2 видит Client4. Так же они не видят других клиентов, находящихся в другом L2 сегменте.
+ ![pingl2cl1.png](ping6.png)
+
+ Как видим Client1 видит Client2, Client3, а так же Client4.
 
 
  Далее посмотрим eBGP соседей на спайнах, а так же состояние сессий:
