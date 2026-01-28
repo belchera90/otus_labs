@@ -876,7 +876,7 @@ Neighbor           AS Session State AFI/SAFI                AFI/SAFI State   NLR
  ```
  </details>
 
-Как видим EVPN соседи активны.
+Как видим - IPv4 и EVPN соседи активны.
  
  Так же посмотрим EVPN маршруты типа 2 и 3 на каждом leaf-коммутаторе:
  
@@ -898,33 +898,28 @@ AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Li
           Network                Next Hop              Metric  LocPref Weight  Path
  * >      RD: 10.1.1.1:10 mac-ip 0050.7966.6806
                                  -                     -       -       0       i
- * >Ec    RD: 10.1.2.1:20 mac-ip 0050.7966.6807
+ * >      RD: 10.1.1.1:10 mac-ip 0050.7966.6806 192.168.10.101
+                                 -                     -       -       0       i
+          RD: 10.1.2.1:20 mac-ip 0050.7966.6807
                                  10.1.2.1              -       100     0       65000 65002 i
- *  ec    RD: 10.1.2.1:20 mac-ip 0050.7966.6807
+          RD: 10.1.2.1:20 mac-ip 0050.7966.6807 192.168.20.102
                                  10.1.2.1              -       100     0       65000 65002 i
- * >Ec    RD: 10.1.3.1:10 mac-ip 0050.7966.6808
+          RD: 10.1.3.1:30 mac-ip 0050.7966.6808
                                  10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:10 mac-ip 0050.7966.6808
+          RD: 10.1.3.1:30 mac-ip 0050.7966.6808 192.168.30.103
                                  10.1.3.1              -       100     0       65000 65003 i
- * >Ec    RD: 10.1.3.1:20 mac-ip 0050.7966.6809
+          RD: 10.1.3.1:40 mac-ip 0050.7966.6809
                                  10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:20 mac-ip 0050.7966.6809
+          RD: 10.1.3.1:40 mac-ip 0050.7966.6809 192.168.40.104
                                  10.1.3.1              -       100     0       65000 65003 i
  * >      RD: 10.1.1.1:10 imet 10.1.1.1
                                  -                     -       -       0       i
- * >Ec    RD: 10.1.2.1:20 imet 10.1.2.1
+          RD: 10.1.2.1:20 imet 10.1.2.1
                                  10.1.2.1              -       100     0       65000 65002 i
- *  ec    RD: 10.1.2.1:20 imet 10.1.2.1
-                                 10.1.2.1              -       100     0       65000 65002 i
- * >Ec    RD: 10.1.3.1:10 imet 10.1.3.1
+          RD: 10.1.3.1:30 imet 10.1.3.1
                                  10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:10 imet 10.1.3.1
+          RD: 10.1.3.1:40 imet 10.1.3.1
                                  10.1.3.1              -       100     0       65000 65003 i
- * >Ec    RD: 10.1.3.1:20 imet 10.1.3.1
-                                 10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:20 imet 10.1.3.1
-                                 10.1.3.1              -       100     0       65000 65003 i
-Leaf1#
 
  ```
 
@@ -932,6 +927,8 @@ Leaf1#
  ```
 
 Leaf2#sh bgp evpn
+
+Jan 28 11:56:09 Leaf2 Bgp: %BGP-3-NOTIFICATION: sent to neighbor 10.2.2.5 (VRF default AS 65000) 6/10 (Cease/BFD down <Hard Reset>) 0 bytes
 BGP routing table information for VRF default
 Router identifier 10.1.2.1, local AS number 65002
 Route status codes: * - valid, > - active, S - Stale, E - ECMP head, e - ECMP
@@ -940,41 +937,36 @@ Origin codes: i - IGP, e - EGP, ? - incomplete
 AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Link Local Nexthop
 
           Network                Next Hop              Metric  LocPref Weight  Path
- * >Ec    RD: 10.1.1.1:10 mac-ip 0050.7966.6806
+   %      RD: 10.1.1.1:10 mac-ip 0050.7966.6806
                                  10.1.1.1              -       100     0       65000 65001 i
- *  ec    RD: 10.1.1.1:10 mac-ip 0050.7966.6806
+   %      RD: 10.1.1.1:10 mac-ip 0050.7966.6806 192.168.10.101
                                  10.1.1.1              -       100     0       65000 65001 i
  * >      RD: 10.1.2.1:20 mac-ip 0050.7966.6807
                                  -                     -       -       0       i
- * >Ec    RD: 10.1.3.1:10 mac-ip 0050.7966.6808
+ * >      RD: 10.1.2.1:20 mac-ip 0050.7966.6807 192.168.20.102
+                                 -                     -       -       0       i
+ * >      RD: 10.1.3.1:30 mac-ip 0050.7966.6808
                                  10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:10 mac-ip 0050.7966.6808
+ * >      RD: 10.1.3.1:30 mac-ip 0050.7966.6808 192.168.30.103
                                  10.1.3.1              -       100     0       65000 65003 i
- * >Ec    RD: 10.1.3.1:20 mac-ip 0050.7966.6809
+ * >      RD: 10.1.3.1:40 mac-ip 0050.7966.6809
                                  10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:20 mac-ip 0050.7966.6809
+ * >      RD: 10.1.3.1:40 mac-ip 0050.7966.6809 192.168.40.104
                                  10.1.3.1              -       100     0       65000 65003 i
- * >Ec    RD: 10.1.1.1:10 imet 10.1.1.1
-                                 10.1.1.1              -       100     0       65000 65001 i
- *  ec    RD: 10.1.1.1:10 imet 10.1.1.1
+   %      RD: 10.1.1.1:10 imet 10.1.1.1
                                  10.1.1.1              -       100     0       65000 65001 i
  * >      RD: 10.1.2.1:20 imet 10.1.2.1
                                  -                     -       -       0       i
- * >Ec    RD: 10.1.3.1:10 imet 10.1.3.1
+ * >      RD: 10.1.3.1:30 imet 10.1.3.1
                                  10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:10 imet 10.1.3.1
+ * >      RD: 10.1.3.1:40 imet 10.1.3.1
                                  10.1.3.1              -       100     0       65000 65003 i
- * >Ec    RD: 10.1.3.1:20 imet 10.1.3.1
-                                 10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:20 imet 10.1.3.1
-                                 10.1.3.1              -       100     0       65000 65003 i
-
- ```
 
  #### Leaf 3
  ```
 
 Leaf3#sh bgp evpn
+
 BGP routing table information for VRF default
 Router identifier 10.1.3.1, local AS number 65003
 Route status codes: * - valid, > - active, S - Stale, E - ECMP head, e - ECMP
@@ -983,29 +975,27 @@ Origin codes: i - IGP, e - EGP, ? - incomplete
 AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Link Local Nexthop
 
           Network                Next Hop              Metric  LocPref Weight  Path
- * >Ec    RD: 10.1.1.1:10 mac-ip 0050.7966.6806
+   %      RD: 10.1.1.1:10 mac-ip 0050.7966.6806
                                  10.1.1.1              -       100     0       65000 65001 i
- *  ec    RD: 10.1.1.1:10 mac-ip 0050.7966.6806
+   %      RD: 10.1.1.1:10 mac-ip 0050.7966.6806 192.168.10.101
                                  10.1.1.1              -       100     0       65000 65001 i
- * >Ec    RD: 10.1.2.1:20 mac-ip 0050.7966.6807
+   %      RD: 10.1.2.1:20 mac-ip 0050.7966.6807
                                  10.1.2.1              -       100     0       65000 65002 i
- *  ec    RD: 10.1.2.1:20 mac-ip 0050.7966.6807
+          RD: 10.1.2.1:20 mac-ip 0050.7966.6807 192.168.20.102
                                  10.1.2.1              -       100     0       65000 65002 i
- * >      RD: 10.1.3.1:10 mac-ip 0050.7966.6808
+ * >      RD: 10.1.3.1:30 mac-ip 0050.7966.6808
                                  -                     -       -       0       i
- * >      RD: 10.1.3.1:20 mac-ip 0050.7966.6809
+ * >      RD: 10.1.3.1:30 mac-ip 0050.7966.6808 192.168.30.103
                                  -                     -       -       0       i
- * >Ec    RD: 10.1.1.1:10 imet 10.1.1.1
-                                 10.1.1.1              -       100     0       65000 65001 i
- *  ec    RD: 10.1.1.1:10 imet 10.1.1.1
-                                 10.1.1.1              -       100     0       65000 65001 i
- * >Ec    RD: 10.1.2.1:20 imet 10.1.2.1
-                                 10.1.2.1              -       100     0       65000 65002 i
- *  ec    RD: 10.1.2.1:20 imet 10.1.2.1
-                                 10.1.2.1              -       100     0       65000 65002 i
- * >      RD: 10.1.3.1:10 imet 10.1.3.1
+ * >      RD: 10.1.3.1:40 mac-ip 0050.7966.6809
                                  -                     -       -       0       i
- * >      RD: 10.1.3.1:20 imet 10.1.3.1
+ * >      RD: 10.1.3.1:40 mac-ip 0050.7966.6809 192.168.40.104
+                                 -                     -       -       0       i
+   %      RD: 10.1.2.1:20 imet 10.1.2.1
+                                 10.1.2.1              -       100     0       65000 65002 i
+ * >      RD: 10.1.3.1:30 imet 10.1.3.1
+                                 -                     -       -       0       i
+ * >      RD: 10.1.3.1:40 imet 10.1.3.1
                                  -                     -       -       0       i
 
  ```
@@ -1016,64 +1006,86 @@ AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Li
 
  #### Leaf 1
  ```
-Leaf1#sh mac address-table
-          Mac Address Table
-------------------------------------------------------------------
+Leaf1#show bgp evpn instance
+EVPN instance: VLAN 10
+  Route distinguisher: 0:0
+  Route target import: Route-Target-AS:10:10010
+  Route target export: Route-Target-AS:10:10010
+  Service interface: VLAN-based
+  Local VXLAN IP address: 10.1.1.1
+  VXLAN: enabled
+  MPLS: disabled
+Leaf1#show vxlan vni
+VNI to VLAN Mapping for Vxlan1
+VNI         VLAN       Source       Interface       802.1Q Tag
+----------- ---------- ------------ --------------- ----------
+10010       10         static       Ethernet3       untagged
+                                    Vxlan1          10
 
-Vlan    Mac Address       Type        Ports      Moves   Last Move
-----    -----------       ----        -----      -----   ---------
-  10    0050.7966.6806    DYNAMIC     Et3        1       0:04:37 ago
-  10    0050.7966.6808    DYNAMIC     Vx1        1       0:04:32 ago
-Total Mac Addresses for this criterion: 2
+VNI to dynamic VLAN Mapping for Vxlan1
+VNI         VLAN       VRF           Source
+----------- ---------- ------------- ------------
+10100       4094       CON_VRF       evpn
 
-          Multicast Mac Address Table
-------------------------------------------------------------------
-
-Vlan    Mac Address       Type        Ports
-----    -----------       ----        -----
-Total Mac Addresses for this criterion: 0
 
  ```
  #### Leaf 2
  ```
-Leaf2#sh mac address-table
-          Mac Address Table
-------------------------------------------------------------------
+Leaf2#show bgp evpn instance
+EVPN instance: VLAN 20
+  Route distinguisher: 0:0
+  Route target import: Route-Target-AS:20:10020
+  Route target export: Route-Target-AS:20:10020
+  Service interface: VLAN-based
+  Local VXLAN IP address: 10.1.2.1
+  VXLAN: enabled
+  MPLS: disabled
+Leaf2#show vxlan vni
+VNI to VLAN Mapping for Vxlan1
+VNI         VLAN       Source       Interface       802.1Q Tag
+----------- ---------- ------------ --------------- ----------
+10020       20         static       Ethernet3       untagged
+                                    Vxlan1          20
 
-Vlan    Mac Address       Type        Ports      Moves   Last Move
-----    -----------       ----        -----      -----   ---------
-  20    0050.7966.6807    DYNAMIC     Et3        1       0:04:52 ago
-  20    0050.7966.6809    DYNAMIC     Vx1        1       0:04:47 ago
-Total Mac Addresses for this criterion: 2
-
-          Multicast Mac Address Table
-------------------------------------------------------------------
-
-Vlan    Mac Address       Type        Ports
-----    -----------       ----        -----
-Total Mac Addresses for this criterion: 0
+VNI to dynamic VLAN Mapping for Vxlan1
+VNI         VLAN       VRF           Source
+----------- ---------- ------------- ------------
+10100       4094       CON_VRF       evpn
 
  ```
  #### Leaf 3
  ```
-Leaf3#sh mac address-table
-          Mac Address Table
-------------------------------------------------------------------
+Leaf3#show bgp evpn instance
+EVPN instance: VLAN 30
+  Route distinguisher: 0:0
+  Route target import: Route-Target-AS:30:10030
+  Route target export: Route-Target-AS:30:10030
+  Service interface: VLAN-based
+  Local VXLAN IP address: 10.1.3.1
+  VXLAN: enabled
+  MPLS: disabled
+EVPN instance: VLAN 40
+  Route distinguisher: 0:0
+  Route target import: Route-Target-AS:40:10040
+  Route target export: Route-Target-AS:40:10040
+  Service interface: VLAN-based
+  Local VXLAN IP address: 10.1.3.1
+  VXLAN: enabled
+  MPLS: disabled
+Leaf3#show vxlan vni
+VNI to VLAN Mapping for Vxlan1
+VNI         VLAN       Source       Interface       802.1Q Tag
+----------- ---------- ------------ --------------- ----------
+10030       30         static       Ethernet3       untagged
+                                    Vxlan1          30
+10040       40         static       Ethernet4       untagged
+                                    Vxlan1          40
 
-Vlan    Mac Address       Type        Ports      Moves   Last Move
-----    -----------       ----        -----      -----   ---------
-  10    0050.7966.6806    DYNAMIC     Vx1        1       0:05:08 ago
-  10    0050.7966.6808    DYNAMIC     Et3        1       0:05:05 ago
-  20    0050.7966.6807    DYNAMIC     Vx1        1       0:05:06 ago
-  20    0050.7966.6809    DYNAMIC     Et4        1       0:05:03 ago
-Total Mac Addresses for this criterion: 4
+VNI to dynamic VLAN Mapping for Vxlan1
+VNI         VLAN       VRF           Source
+----------- ---------- ------------- ------------
+10100       4094       CON_VRF       evpn
 
-          Multicast Mac Address Table
-------------------------------------------------------------------
-
-Vlan    Mac Address       Type        Ports
-----    -----------       ----        -----
-Total Mac Addresses for this criterion: 0
 
 
  ```
