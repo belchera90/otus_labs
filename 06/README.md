@@ -995,6 +995,8 @@ AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Li
                                  10.1.3.1              -       100     0       65000 65003 i
  *  ec    RD: 10.1.3.1:40 imet 10.1.3.1
                                  10.1.3.1              -       100     0       65000 65003 i
+   
+ ```
 
  #### Leaf 3
  ```
@@ -1044,7 +1046,9 @@ AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Li
                                  -                     -       -       0       i
  * >      RD: 10.1.3.1:40 imet 10.1.3.1
                                  -                     -       -       0       i
+   
  ```
+
 </details>
 Как видим, достигается полная связность с использованием протокола ECMP: любой хост → любой хост по VXLAN, так же в отличии от l2evpn появился MAC+IP маршрут.</br>
 </br>
