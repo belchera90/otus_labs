@@ -1046,9 +1046,10 @@ AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Li
                                  -                     -       -       0       i
  ```
 </details>
-Как видим, достигается полная связность с использованием протокола ECMP: любой хост → любой хост по VXLAN.</br>
+Как видим, достигается полная связность с использованием протокола ECMP: любой хост → любой хост по VXLAN, так же в отличии от l2evpn появился MAC+IP маршрут.</br>
 </br>
-Проверим таблицы мак адресов:
+
+Проверим EVI и убедимся, что комммутатор получил всю необходимую информацию:
 
  #### Leaf 1
  ```
@@ -1133,13 +1134,16 @@ VNI         VLAN       VRF           Source
 10100       4094       CON_VRF       evpn
 
 
-
  ```
 
-Как видим, все mac адреса корректно изучаются на всех лифах.
+</br>
 
+Взглянем на таблицу маршрутизации CON_VRF:
 
-      show ip route vrf CON_VRF
+#### Leaf 1
+```
+
+Leaf1#show ip route vrf CON_VRF
 
 VRF: CON_VRF
 Codes: C - connected, S - static, K - kernel,
@@ -1161,9 +1165,12 @@ Gateway of last resort is not set
  B E      192.168.30.103/32 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
  B E      192.168.40.104/32 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
 
+ ```
 
+#### Leaf 2
+```
 
-show ip route vrf CON_VRF
+Leaf2#show ip route vrf CON_VRF
 
 VRF: CON_VRF
 Codes: C - connected, S - static, K - kernel,
@@ -1185,6 +1192,10 @@ Gateway of last resort is not set
  B E      192.168.30.103/32 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
  B E      192.168.40.104/32 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
 
+ ```
+
+#### Leaf 3
+```
 
 Leaf3#show ip route vrf CON_VRF
 
@@ -1208,6 +1219,6 @@ Gateway of last resort is not set
  C        192.168.30.0/24 is directly connected, Vlan30
  C        192.168.40.0/24 is directly connected, Vlan40
 
+ ```
 
-
-
+Видно, что коммутатор установил в таблицу маршрутизации маршруты до других клиентов, доступных в других VNI(определены IP-адрес удаленного VTEP'а, номер VNI, Router's MAC VTEP'а, а также локальный VXLAN-интерфейс).
