@@ -308,11 +308,29 @@ router bgp 65003
 ```
 #### Client 1
 ```
-
+hostname Client1
+!
+vlan 10
+!
+interface Vlan10
+   ip address 192.168.10.101/24
+!
+ip route 0.0.0.0/0 192.168.10.254
+!
+end
 ```
 #### Client 2
 ```
-
+hostname Client1
+!
+vlan 20
+!
+interface Vlan20
+   ip address 192.168.20.102/24
+!
+ip route 0.0.0.0/0 192.168.20.254
+!
+end
 ```
 #### Client 3
 ```
@@ -329,13 +347,34 @@ VPCS> ip 192.168.40.104 255.255.255.0 192.168.40.254
 Вначале, соберем активный агрегированный линк на клиенте 1 и клиенте 2:
 
 ```
+interface Port-Channelx0
+   switchport access vlan x0
+!
+interface Ethernetx
+   channel-group x0 mode active
+!
 
 ```
 
-Далее на лифах опишем недостающие вланы и VNI, то есть донастроим плоскость данных VXLAN. На LEAF 1 - VLAN 20(VNI 10020), на LEAF 2 - VLAN 10(VNI 10010), а на LEAF 3 - VLAN 20(VNI 10020): 
+Далее на лифах опишем недостающие вланы и VNI, то есть донастроим плоскость данных VXLAN. На LEAF 1 - VLAN 20(VNI 10020), на LEAF 2 - VLAN 10(VNI 10010), а на LEAF 3 - VLAN 20(VNI 10020). Затем привяжем  VLANы к соответствующим Port-Channel, и включим в Port-Channel интерфейсы: 
 
 ```
-
+vlan х0
+!
+interface Port-Channelх0
+   switchport access vlan х0
+!
+interface Ethernetх
+   channel-group х0 mode active
+!
+interface Vxlan1
+   vxlan vlan х0 vni 100х0
+!
+interface Vlanх0
+   vrf CON_VRF
+   ip address 192.168.20.20х/24
+   ip virtual-router address 192.168.х0.254/24
+!
 ```
 
 Затем настроим multihome-сегмент(для генерации маршрута RT-1 (Ethernet Auto-Discovery Route)).
@@ -343,12 +382,21 @@ VPCS> ip 192.168.40.104 255.255.255.0 192.168.40.254
 Зададим произвольный MAC-адрес LACP-канала с помощью команды lacp system-id, который должен быть одинаковым на всех лифах, входящих в Port-Channel. Также зададим идентификатор сегмента ESI(для информирования VTEP, что линк обозначенен как часть глобально уникального набора линков ведущих к одной и той же клиентской multihome-системе) и Route target сегмента(благодаря этому комьюнити VTEP'ы, подключенные к одному сегменту, будут импортировать маршруты RT-4, относящиеся к этому ESI).
 
 ```
-
+evpn ethernet-segment х0
+   identifier 0000:0000:0000:0000:00х0
+   route-target import 00:00:00:00:00:х0
+   lacp system-id х0aa.aaaa.00х0
+!
 ```
 
 Так же сделаем описание добавленных VLAN в секции динамического протокола протокола BGP:
 ```
-
+router bgp 6500х
+   vlan х0
+      rd auto
+      route-target both х0:100х0
+      redistribute learned
+   !
 !
 ```
 
