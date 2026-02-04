@@ -953,6 +953,11 @@ router bgp 65002
    neighbor 10.2.1.5 peer group SPINE_NEIGHBOR
    neighbor 10.2.2.5 peer group SPINE_NEIGHBOR
    !
+   vlan 10
+      rd auto
+      route-target both 10:10010
+      redistribute learned
+   !
    vlan 20
       rd auto
       route-target both 20:10020
@@ -1077,6 +1082,11 @@ router bgp 65003
    neighbor 10.0.2.1 peer group SPINE_NEIGHBOR_VXLAN
    neighbor 10.2.1.9 peer group SPINE_NEIGHBOR
    neighbor 10.2.2.9 peer group SPINE_NEIGHBOR
+   !
+   vlan 20
+      rd auto
+      route-target both 20:10020
+      redistribute learned
    !
    vlan 30
       rd auto
