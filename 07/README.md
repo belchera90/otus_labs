@@ -1222,6 +1222,181 @@ Port Channel Port-Channel20:
  </details>
 Как видим, активные агрегированные каналы построены и функционируют.</br>
 </br>
+ </details>
+Далее проверим, что все необходимые маршруты 2 типа EVPN присутствуют в нашей фабрике. Это нужно, чтобы убедится в корректной работе нажей VxLAN+EVPN фабрики.</br>
+ <details>
+ <summary> Type 2 </summary>
+ 
+
+ #### Leaf 1
+ ```
+
+Leaf1#sh bgp evpn route-type ?
+  auto-discovery    Filter by Ethernet auto-discovery (A-D) route (type 1)
+  ethernet-segment  Filter by Ethernet segment route (type 4)
+  imet              Filter by inclusive multicast Ethernet tag route (type 3)
+  ip-prefix         Filter by IP prefix route (type 5)
+  join-sync         Filter by multicast join sync route (type 7)
+  leave-sync        Filter by multicast leave sync route (type 8)
+  mac-ip            Filter by MAC/IP advertisement route (type 2)
+  smet              Filter by selective multicast Ethernet tag route (type 6)
+  spmsi             Filter by selective PMSI auto discovery route (type 10)
+
+Leaf1#sh bgp evpn route-type mac-ip
+BGP routing table information for VRF default
+Router identifier 10.1.1.1, local AS number 65001
+Route status codes: * - valid, > - active, S - Stale, E - ECMP head, e - ECMP
+                    c - Contributing to ECMP, % - Pending BGP convergence
+Origin codes: i - IGP, e - EGP, ? - incomplete
+AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Link Local Nexthop
+
+          Network                Next Hop              Metric  LocPref Weight  Path
+ * >Ec    RD: 10.1.3.1:30 mac-ip 0050.7966.6808
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:30 mac-ip 0050.7966.6808
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >Ec    RD: 10.1.3.1:30 mac-ip 0050.7966.6808 192.168.30.103
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:30 mac-ip 0050.7966.6808 192.168.30.103
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >Ec    RD: 10.1.3.1:40 mac-ip 0050.7966.6809
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:40 mac-ip 0050.7966.6809
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >Ec    RD: 10.1.3.1:40 mac-ip 0050.7966.6809 192.168.40.104
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:40 mac-ip 0050.7966.6809 192.168.40.104
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >      RD: 10.1.1.1:10 mac-ip 5000.0072.8b31
+                                 -                     -       -       0       i
+ * >      RD: 10.1.1.1:10 mac-ip 5000.0072.8b31 192.168.10.101
+                                 -                     -       -       0       i
+ * >Ec    RD: 10.1.2.1:10 mac-ip 5000.0072.8b31 192.168.10.101
+                                 10.1.2.1              -       100     0       65000 65002 i
+ *  ec    RD: 10.1.2.1:10 mac-ip 5000.0072.8b31 192.168.10.101
+                                 10.1.2.1              -       100     0       65000 65002 i
+ * >Ec    RD: 10.1.3.1:20 mac-ip 5000.00f6.ad37
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:20 mac-ip 5000.00f6.ad37
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >      RD: 10.1.1.1:20 mac-ip 5000.00f6.ad37 192.168.20.102
+                                 -                     -       -       0       i
+ * >Ec    RD: 10.1.2.1:20 mac-ip 5000.00f6.ad37 192.168.20.102
+                                 10.1.2.1              -       100     0       65000 65002 i
+ *  ec    RD: 10.1.2.1:20 mac-ip 5000.00f6.ad37 192.168.20.102
+                                 10.1.2.1              -       100     0       65000 65002 i
+ * >Ec    RD: 10.1.3.1:20 mac-ip 5000.00f6.ad37 192.168.20.102
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:20 mac-ip 5000.00f6.ad37 192.168.20.102
+                                 10.1.3.1              -       100     0       65000 65003 i
+
+
+ ```
+
+ #### Leaf 2
+ ```
+
+Leaf2#sh bgp evpn route-type mac-ip
+BGP routing table information for VRF default
+Router identifier 10.1.2.1, local AS number 65002
+Route status codes: * - valid, > - active, S - Stale, E - ECMP head, e - ECMP
+                    c - Contributing to ECMP, % - Pending BGP convergence
+Origin codes: i - IGP, e - EGP, ? - incomplete
+AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Link Local Nexthop
+
+          Network                Next Hop              Metric  LocPref Weight  Path
+ * >Ec    RD: 10.1.3.1:30 mac-ip 0050.7966.6808
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:30 mac-ip 0050.7966.6808
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >Ec    RD: 10.1.3.1:30 mac-ip 0050.7966.6808 192.168.30.103
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:30 mac-ip 0050.7966.6808 192.168.30.103
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >Ec    RD: 10.1.3.1:40 mac-ip 0050.7966.6809
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:40 mac-ip 0050.7966.6809
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >Ec    RD: 10.1.3.1:40 mac-ip 0050.7966.6809 192.168.40.104
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:40 mac-ip 0050.7966.6809 192.168.40.104
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >Ec    RD: 10.1.1.1:10 mac-ip 5000.0072.8b31
+                                 10.1.1.1              -       100     0       65000 65001 i
+ *  ec    RD: 10.1.1.1:10 mac-ip 5000.0072.8b31
+                                 10.1.1.1              -       100     0       65000 65001 i
+ * >Ec    RD: 10.1.1.1:10 mac-ip 5000.0072.8b31 192.168.10.101
+                                 10.1.1.1              -       100     0       65000 65001 i
+ *  ec    RD: 10.1.1.1:10 mac-ip 5000.0072.8b31 192.168.10.101
+                                 10.1.1.1              -       100     0       65000 65001 i
+ * >      RD: 10.1.2.1:10 mac-ip 5000.0072.8b31 192.168.10.101
+                                 -                     -       -       0       i
+ * >Ec    RD: 10.1.3.1:20 mac-ip 5000.00f6.ad37
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:20 mac-ip 5000.00f6.ad37
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >Ec    RD: 10.1.1.1:20 mac-ip 5000.00f6.ad37 192.168.20.102
+                                 10.1.1.1              -       100     0       65000 65001 i
+ *  ec    RD: 10.1.1.1:20 mac-ip 5000.00f6.ad37 192.168.20.102
+                                 10.1.1.1              -       100     0       65000 65001 i
+ * >      RD: 10.1.2.1:20 mac-ip 5000.00f6.ad37 192.168.20.102
+                                 -                     -       -       0       i
+ * >Ec    RD: 10.1.3.1:20 mac-ip 5000.00f6.ad37 192.168.20.102
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:20 mac-ip 5000.00f6.ad37 192.168.20.102
+                                 10.1.3.1              -       100     0       65000 65003 i
+
+ ```
+
+ #### Leaf 3
+ ```
+Leaf3#sh bgp evpn route-type mac-ip
+BGP routing table information for VRF default
+Router identifier 10.1.3.1, local AS number 65003
+Route status codes: * - valid, > - active, S - Stale, E - ECMP head, e - ECMP
+                    c - Contributing to ECMP, % - Pending BGP convergence
+Origin codes: i - IGP, e - EGP, ? - incomplete
+AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Link Local Nexthop
+
+          Network                Next Hop              Metric  LocPref Weight  Path
+ * >      RD: 10.1.3.1:30 mac-ip 0050.7966.6808
+                                 -                     -       -       0       i
+ * >      RD: 10.1.3.1:30 mac-ip 0050.7966.6808 192.168.30.103
+                                 -                     -       -       0       i
+ * >      RD: 10.1.3.1:40 mac-ip 0050.7966.6809
+                                 -                     -       -       0       i
+ * >      RD: 10.1.3.1:40 mac-ip 0050.7966.6809 192.168.40.104
+                                 -                     -       -       0       i
+ * >Ec    RD: 10.1.1.1:10 mac-ip 5000.0072.8b31
+                                 10.1.1.1              -       100     0       65000 65001 i
+ *  ec    RD: 10.1.1.1:10 mac-ip 5000.0072.8b31
+                                 10.1.1.1              -       100     0       65000 65001 i
+ * >Ec    RD: 10.1.1.1:10 mac-ip 5000.0072.8b31 192.168.10.101
+                                 10.1.1.1              -       100     0       65000 65001 i
+ *  ec    RD: 10.1.1.1:10 mac-ip 5000.0072.8b31 192.168.10.101
+                                 10.1.1.1              -       100     0       65000 65001 i
+ * >Ec    RD: 10.1.2.1:10 mac-ip 5000.0072.8b31 192.168.10.101
+                                 10.1.2.1              -       100     0       65000 65002 i
+ *  ec    RD: 10.1.2.1:10 mac-ip 5000.0072.8b31 192.168.10.101
+                                 10.1.2.1              -       100     0       65000 65002 i
+ * >      RD: 10.1.3.1:20 mac-ip 5000.00f6.ad37
+                                 -                     -       -       0       i
+ * >Ec    RD: 10.1.1.1:20 mac-ip 5000.00f6.ad37 192.168.20.102
+                                 10.1.1.1              -       100     0       65000 65001 i
+ *  ec    RD: 10.1.1.1:20 mac-ip 5000.00f6.ad37 192.168.20.102
+                                 10.1.1.1              -       100     0       65000 65001 i
+ * >Ec    RD: 10.1.2.1:20 mac-ip 5000.00f6.ad37 192.168.20.102
+                                 10.1.2.1              -       100     0       65000 65002 i
+ *  ec    RD: 10.1.2.1:20 mac-ip 5000.00f6.ad37 192.168.20.102
+                                 10.1.2.1              -       100     0       65000 65002 i
+ * >      RD: 10.1.3.1:20 mac-ip 5000.00f6.ad37 192.168.20.102
+                                 -                     -       -       0       i
+
+ ```
+
+</details>
+Как видим, все MAC и MAC+IP маршруты на месте.
+</br>
 Теперь посмотрим маршруты типа 1 на лифах.</br>
  <details>
  <summary> Type 1 </summary>
@@ -1241,20 +1416,36 @@ AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Li
           Network                Next Hop              Metric  LocPref Weight  Path
  * >      RD: 10.1.1.1:10 auto-discovery 0 0000:0000:0000:0000:0010
                                  -                     -       -       0       i
+ * >Ec    RD: 10.1.2.1:10 auto-discovery 0 0000:0000:0000:0000:0010
+                                 10.1.2.1              -       100     0       65000 65002 i
+ *  ec    RD: 10.1.2.1:10 auto-discovery 0 0000:0000:0000:0000:0010
+                                 10.1.2.1              -       100     0       65000 65002 i
  * >      RD: 10.1.1.1:1 auto-discovery 0000:0000:0000:0000:0010
                                  -                     -       -       0       i
+ * >Ec    RD: 10.1.2.1:1 auto-discovery 0000:0000:0000:0000:0010
+                                 10.1.2.1              -       100     0       65000 65002 i
+ *  ec    RD: 10.1.2.1:1 auto-discovery 0000:0000:0000:0000:0010
+                                 10.1.2.1              -       100     0       65000 65002 i
  * >      RD: 10.1.1.1:20 auto-discovery 0 0000:0000:0000:0000:0020
                                  -                     -       -       0       i
  * >Ec    RD: 10.1.2.1:20 auto-discovery 0 0000:0000:0000:0000:0020
                                  10.1.2.1              -       100     0       65000 65002 i
  *  ec    RD: 10.1.2.1:20 auto-discovery 0 0000:0000:0000:0000:0020
                                  10.1.2.1              -       100     0       65000 65002 i
+ * >Ec    RD: 10.1.3.1:20 auto-discovery 0 0000:0000:0000:0000:0020
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:20 auto-discovery 0 0000:0000:0000:0000:0020
+                                 10.1.3.1              -       100     0       65000 65003 i
  * >      RD: 10.1.1.1:1 auto-discovery 0000:0000:0000:0000:0020
                                  -                     -       -       0       i
  * >Ec    RD: 10.1.2.1:1 auto-discovery 0000:0000:0000:0000:0020
                                  10.1.2.1              -       100     0       65000 65002 i
  *  ec    RD: 10.1.2.1:1 auto-discovery 0000:0000:0000:0000:0020
                                  10.1.2.1              -       100     0       65000 65002 i
+ * >Ec    RD: 10.1.3.1:1 auto-discovery 0000:0000:0000:0000:0020
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:1 auto-discovery 0000:0000:0000:0000:0020
+                                 10.1.3.1              -       100     0       65000 65003 i
 
 
  ```
@@ -1275,28 +1466,39 @@ AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Li
                                  10.1.1.1              -       100     0       65000 65001 i
  *  ec    RD: 10.1.1.1:10 auto-discovery 0 0000:0000:0000:0000:0010
                                  10.1.1.1              -       100     0       65000 65001 i
+ * >      RD: 10.1.2.1:10 auto-discovery 0 0000:0000:0000:0000:0010
+                                 -                     -       -       0       i
  * >Ec    RD: 10.1.1.1:1 auto-discovery 0000:0000:0000:0000:0010
                                  10.1.1.1              -       100     0       65000 65001 i
  *  ec    RD: 10.1.1.1:1 auto-discovery 0000:0000:0000:0000:0010
                                  10.1.1.1              -       100     0       65000 65001 i
+ * >      RD: 10.1.2.1:1 auto-discovery 0000:0000:0000:0000:0010
+                                 -                     -       -       0       i
  * >Ec    RD: 10.1.1.1:20 auto-discovery 0 0000:0000:0000:0000:0020
                                  10.1.1.1              -       100     0       65000 65001 i
  *  ec    RD: 10.1.1.1:20 auto-discovery 0 0000:0000:0000:0000:0020
                                  10.1.1.1              -       100     0       65000 65001 i
  * >      RD: 10.1.2.1:20 auto-discovery 0 0000:0000:0000:0000:0020
                                  -                     -       -       0       i
+ * >Ec    RD: 10.1.3.1:20 auto-discovery 0 0000:0000:0000:0000:0020
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:20 auto-discovery 0 0000:0000:0000:0000:0020
+                                 10.1.3.1              -       100     0       65000 65003 i
  * >Ec    RD: 10.1.1.1:1 auto-discovery 0000:0000:0000:0000:0020
                                  10.1.1.1              -       100     0       65000 65001 i
  *  ec    RD: 10.1.1.1:1 auto-discovery 0000:0000:0000:0000:0020
                                  10.1.1.1              -       100     0       65000 65001 i
  * >      RD: 10.1.2.1:1 auto-discovery 0000:0000:0000:0000:0020
                                  -                     -       -       0       i
-   
+ * >Ec    RD: 10.1.3.1:1 auto-discovery 0000:0000:0000:0000:0020
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:1 auto-discovery 0000:0000:0000:0000:0020
+                                 10.1.3.1              -       100     0       65000 65003 i
+
  ```
 
  #### Leaf 3
  ```
-
 Leaf3#sh bgp evpn route-type auto-discovery
 BGP routing table information for VRF default
 Router identifier 10.1.3.1, local AS number 65003
@@ -1310,10 +1512,18 @@ AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Li
                                  10.1.1.1              -       100     0       65000 65001 i
  *  ec    RD: 10.1.1.1:10 auto-discovery 0 0000:0000:0000:0000:0010
                                  10.1.1.1              -       100     0       65000 65001 i
+ * >Ec    RD: 10.1.2.1:10 auto-discovery 0 0000:0000:0000:0000:0010
+                                 10.1.2.1              -       100     0       65000 65002 i
+ *  ec    RD: 10.1.2.1:10 auto-discovery 0 0000:0000:0000:0000:0010
+                                 10.1.2.1              -       100     0       65000 65002 i
  * >Ec    RD: 10.1.1.1:1 auto-discovery 0000:0000:0000:0000:0010
                                  10.1.1.1              -       100     0       65000 65001 i
  *  ec    RD: 10.1.1.1:1 auto-discovery 0000:0000:0000:0000:0010
                                  10.1.1.1              -       100     0       65000 65001 i
+ * >Ec    RD: 10.1.2.1:1 auto-discovery 0000:0000:0000:0000:0010
+                                 10.1.2.1              -       100     0       65000 65002 i
+ *  ec    RD: 10.1.2.1:1 auto-discovery 0000:0000:0000:0000:0010
+                                 10.1.2.1              -       100     0       65000 65002 i
  * >Ec    RD: 10.1.1.1:20 auto-discovery 0 0000:0000:0000:0000:0020
                                  10.1.1.1              -       100     0       65000 65001 i
  *  ec    RD: 10.1.1.1:20 auto-discovery 0 0000:0000:0000:0000:0020
@@ -1322,6 +1532,8 @@ AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Li
                                  10.1.2.1              -       100     0       65000 65002 i
  *  ec    RD: 10.1.2.1:20 auto-discovery 0 0000:0000:0000:0000:0020
                                  10.1.2.1              -       100     0       65000 65002 i
+ * >      RD: 10.1.3.1:20 auto-discovery 0 0000:0000:0000:0000:0020
+                                 -                     -       -       0       i
  * >Ec    RD: 10.1.1.1:1 auto-discovery 0000:0000:0000:0000:0020
                                  10.1.1.1              -       100     0       65000 65001 i
  *  ec    RD: 10.1.1.1:1 auto-discovery 0000:0000:0000:0000:0020
@@ -1330,15 +1542,20 @@ AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Li
                                  10.1.2.1              -       100     0       65000 65002 i
  *  ec    RD: 10.1.2.1:1 auto-discovery 0000:0000:0000:0000:0020
                                  10.1.2.1              -       100     0       65000 65002 i
-
-   
+ * >      RD: 10.1.3.1:1 auto-discovery 0000:0000:0000:0000:0020
+                                 -                     -       -       0       i
  ```
 
 </details>
-Как видим, </br>
+Как видим, каждый маршрут несет в себе идентификатор сегмента - ESI. ECMP так же работает. Обнаружены следующие Multihoming сегменты:</br>
+ESI 0010 (VNI 10010) ← Multihoming на Leaf1+Leaf2  
+ESI 0020 (VNI 10020) ← Multihoming на Leaf1+Leaf2+Leaf3
+</br>
+Мы види маршрута как типа AD per EVI для обнаружения VTEP(Aliasing), так и AD per ES для быстрого переключения при отказе линка и разделения горзонта.
+
 </br>
 
-Теперь посмотрим маршруты типа 4 на лифах.</br>
+Теперь посмотрим маршруты типа 4 на лифах, которые необходимы для выбора DF для BUM трафика.</br>
  <details>
  <summary> Type 4 </summary>
 
@@ -1355,12 +1572,20 @@ AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Li
           Network                Next Hop              Metric  LocPref Weight  Path
  * >      RD: 10.1.1.1:1 ethernet-segment 0000:0000:0000:0000:0010 10.1.1.1
                                  -                     -       -       0       i
+ * >Ec    RD: 10.1.2.1:1 ethernet-segment 0000:0000:0000:0000:0010 10.1.2.1
+                                 10.1.2.1              -       100     0       65000 65002 i
+ *  ec    RD: 10.1.2.1:1 ethernet-segment 0000:0000:0000:0000:0010 10.1.2.1
+                                 10.1.2.1              -       100     0       65000 65002 i
  * >      RD: 10.1.1.1:1 ethernet-segment 0000:0000:0000:0000:0020 10.1.1.1
                                  -                     -       -       0       i
  * >Ec    RD: 10.1.2.1:1 ethernet-segment 0000:0000:0000:0000:0020 10.1.2.1
                                  10.1.2.1              -       100     0       65000 65002 i
  *  ec    RD: 10.1.2.1:1 ethernet-segment 0000:0000:0000:0000:0020 10.1.2.1
                                  10.1.2.1              -       100     0       65000 65002 i
+ * >Ec    RD: 10.1.3.1:1 ethernet-segment 0000:0000:0000:0000:0020 10.1.3.1
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:1 ethernet-segment 0000:0000:0000:0000:0020 10.1.3.1
+                                 10.1.3.1              -       100     0       65000 65003 i
 
  ```
  #### Leaf 2
@@ -1378,13 +1603,19 @@ AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Li
                                  10.1.1.1              -       100     0       65000 65001 i
  *  ec    RD: 10.1.1.1:1 ethernet-segment 0000:0000:0000:0000:0010 10.1.1.1
                                  10.1.1.1              -       100     0       65000 65001 i
+ * >      RD: 10.1.2.1:1 ethernet-segment 0000:0000:0000:0000:0010 10.1.2.1
+                                 -                     -       -       0       i
  * >Ec    RD: 10.1.1.1:1 ethernet-segment 0000:0000:0000:0000:0020 10.1.1.1
                                  10.1.1.1              -       100     0       65000 65001 i
  *  ec    RD: 10.1.1.1:1 ethernet-segment 0000:0000:0000:0000:0020 10.1.1.1
                                  10.1.1.1              -       100     0       65000 65001 i
  * >      RD: 10.1.2.1:1 ethernet-segment 0000:0000:0000:0000:0020 10.1.2.1
                                  -                     -       -       0       i
-
+ * >Ec    RD: 10.1.3.1:1 ethernet-segment 0000:0000:0000:0000:0020 10.1.3.1
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:1 ethernet-segment 0000:0000:0000:0000:0020 10.1.3.1
+                                 10.1.3.1              -       100     0       65000 65003 i
+       -                     -       -       0       i
 
  ```
  #### Leaf 3
@@ -1402,6 +1633,10 @@ AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Li
                                  10.1.1.1              -       100     0       65000 65001 i
  *  ec    RD: 10.1.1.1:1 ethernet-segment 0000:0000:0000:0000:0010 10.1.1.1
                                  10.1.1.1              -       100     0       65000 65001 i
+ * >Ec    RD: 10.1.2.1:1 ethernet-segment 0000:0000:0000:0000:0010 10.1.2.1
+                                 10.1.2.1              -       100     0       65000 65002 i
+ *  ec    RD: 10.1.2.1:1 ethernet-segment 0000:0000:0000:0000:0010 10.1.2.1
+                                 10.1.2.1              -       100     0       65000 65002 i
  * >Ec    RD: 10.1.1.1:1 ethernet-segment 0000:0000:0000:0000:0020 10.1.1.1
                                  10.1.1.1              -       100     0       65000 65001 i
  *  ec    RD: 10.1.1.1:1 ethernet-segment 0000:0000:0000:0000:0020 10.1.1.1
@@ -1410,31 +1645,61 @@ AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Li
                                  10.1.2.1              -       100     0       65000 65002 i
  *  ec    RD: 10.1.2.1:1 ethernet-segment 0000:0000:0000:0000:0020 10.1.2.1
                                  10.1.2.1              -       100     0       65000 65002 i
-
+ * >      RD: 10.1.3.1:1 ethernet-segment 0000:0000:0000:0000:0020 10.1.3.1
+                                 -                     -       -       0       i
 
  ```
-
+Как видимм, обнаружено верное соответствие Multihoming сегментов соответствующим лифам.
 </br>
 
 Теперь попробуем протестировать отказоустойчивость и убедиться, что связнность не теряется при отключении одного из линков:
 
 #### Leaf 1
 ```
-
+Client1#traceroute 192.168.30.103
+traceroute to 192.168.30.103 (192.168.30.103), 30 hops max, 60 byte packets
+ 1  192.168.10.201 (192.168.10.201)  84.306 ms  95.165 ms  120.463 ms
+ 2  192.168.30.203 (192.168.30.203)  213.843 ms  243.482 ms  265.223 ms
+ 3  192.168.30.103 (192.168.30.103)  348.031 ms  364.768 ms  451.280 ms
+Client1#conf t
+Client1(config)#interface ethernet 1
+Client1(config-if-Et1)#shutdown
+Client1(config-if-Et1)#end
+Client1#traceroute 192.168.30.103
+traceroute to 192.168.30.103 (192.168.30.103), 30 hops max, 60 byte packets
+ 1  192.168.10.202 (192.168.10.202)  108.802 ms  114.973 ms  125.129 ms
+ 2  192.168.30.203 (192.168.30.203)  339.094 ms  355.953 ms  434.282 ms
+ 3  192.168.30.103 (192.168.30.103)  469.226 ms  503.899 ms  524.203 ms
 
  ```
 
 #### Leaf 2
 ```
+Client2#traceroute 192.168.40.104
+traceroute to 192.168.40.104 (192.168.40.104), 30 hops max, 60 byte packets
+ 1  192.168.20.203 (192.168.20.203)  183.378 ms  186.407 ms  207.507 ms
+ 2  192.168.40.104 (192.168.40.104)  240.279 ms  251.638 ms  256.661 ms
+Client2#conf t
+Client2(config)#interface Ethernet 3
+Client2(config-if-Et3)#shutdown
+Client2(config-if-Et3)#end
+Client2#traceroute 192.168.40.104
+traceroute to 192.168.40.104 (192.168.40.104), 30 hops max, 60 byte packets
+ 1  192.168.20.201 (192.168.20.201)  154.465 ms  173.684 ms  189.318 ms
+ 2  192.168.20.203 (192.168.20.203)  439.889 ms  508.869 ms  533.518 ms
+ 3  192.168.40.104 (192.168.40.104)  548.479 ms  665.851 ms  688.737 ms
+Client2#conf t
+Client2(config)#interface ethernet 1
+Client2(config-if-Et1)#shutdown
+Client2(config-if-Et1)#end
+Client2#traceroute 192.168.40.104
+traceroute to 192.168.40.104 (192.168.40.104), 30 hops max, 60 byte packets
+ 1  192.168.20.202 (192.168.20.202)  148.995 ms  151.217 ms  158.967 ms
+ 2  192.168.20.203 (192.168.20.203)  264.645 ms  302.608 ms  332.805 ms
+ 3  192.168.40.104 (192.168.40.104)  404.129 ms  474.765 ms  530.747 ms
 
 
  ```
 
-#### Leaf 3
-```
 
-
-
- ```
-
-Видно, что .
+Видно, что при отключении соответствующих интерфейсов трассировка показывает, что происходит переключение пути через работающие лифы, входящие в агрегировааный линк.
