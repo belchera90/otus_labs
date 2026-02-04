@@ -1544,6 +1544,7 @@ AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Li
                                  10.1.2.1              -       100     0       65000 65002 i
  * >      RD: 10.1.3.1:1 auto-discovery 0000:0000:0000:0000:0020
                                  -                     -       -       0       i
+
  ```
 
 </details>
@@ -1588,6 +1589,7 @@ AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Li
                                  10.1.3.1              -       100     0       65000 65003 i
 
  ```
+
  #### Leaf 2
  ```
 Leaf2#sh bgp evpn route-type ethernet-segment
@@ -1618,6 +1620,7 @@ AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Li
        -                     -       -       0       i
 
  ```
+
  #### Leaf 3
  ```
 Leaf3#sh bgp evpn route-type ethernet-segment
@@ -1649,6 +1652,8 @@ AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Li
                                  -                     -       -       0       i
 
  ```
+</details>
+
 Как видимм, обнаружено верное соответствие Multihoming сегментов соответствующим лифам.
 </br>
 
