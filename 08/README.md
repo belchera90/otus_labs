@@ -363,14 +363,9 @@ VPCS> ip 192.168.40.104 255.255.255.0 192.168.40.254
 
 Нам необходимо настроить сеть таким образом, чтобы клиенты находились в разных L2 сегментах(VLAN), но при этом могли обмениваться траффиком с клиентами из другого VLAN, но с определенными условиями. VLAN 10 с VLAN 30  и VLAN 20 с VLAN 40 маршрутизируется через фабрику, а между этими парами VLANов маршрутизация должна идти через файерволл. 
 
-Для организации такой сети мы будем использовать симметричную IRB-модель, в которой каждой паре VLANов будет определен VRF с транзитным VNI. Маршрутизация через файерволл мы ьудем осуществлять через RT-5.
+Для организации такой сети мы будем использовать симметричную IRB-модель, в которой каждой паре VLANов будет определен VRF с транзитным VNI. Маршрутизация через файерволл мы будем осуществлять через RT-5.
 
-```
-switchport access vlan Х0
-vxlan vrf CON_VRF vni 10100
-```
-
-Теперь настроим интерфейс VXLAN. Здесь мы указываем, что VTEP Source IP-адрес нужно брать с интерфейса Loopback0. Этот IP-адрес будет использоваться как внешний Source IP в VXLAN-пакетах. Далее мы задаем соответствие VLAN 10 к VNI 10010, VLAN 20 к VNI 10020, VLAN 30 к VNI 10030, а VLAN 40 к VNI 10040. Затем введем транзитный VNI 10100 и привяжем его к созданному VRF. Так же блокируем data-plane обучение VTEP от любых IP-адресов, кроме тех что разрешены EVPN control-plane (BGP).
+Итак, для начала настроим интерфейс VXLAN. Здесь мы указываем, что VTEP Source IP-адрес нужно брать с интерфейса Loopback0. Этот IP-адрес будет использоваться как внешний Source IP в VXLAN-пакетах. Далее мы задаем соответствие VLAN 10 к VNI 10010, VLAN 20 к VNI 10020, VLAN 30 к VNI 10030, а VLAN 40 к VNI 10040. Так же блокируем data-plane обучение VTEP от любых IP-адресов, кроме тех что разрешены EVPN control-plane (BGP). Так же опишем вланы в секции BGP.
 ```
 interface Vxlan1
    vxlan source-interface Loopback0
@@ -378,30 +373,67 @@ interface Vxlan1
    vxlan vlan ХХ vni 100ХХ
    vxlan learn-restrict any
 !
-```
-
-В качестве шлюзов по умолчанию будут использоваться статические anycast-шлюзы(SAG), то есть на каждом Leaf'е в каждом VNI будет создан интерфейс и назначен IP-адрес(SVI для каждого VLAN), который будет служить адресом шлюза по умолчанию для локально подключенных клиентов. Для этого мы настраиваем одинаковый IP адрес на каждом IRB-интерфейсе конкретного VNI, а так же одинаковый MAC адрес:
-```
-ip virtual-router address 192.168.Х0.254/24
-ip virtual-router mac-address 12:00:00:00:00:00
-!
-```
-
-Далее включим режим multi-agent и настроим описание VLANы и VRF в протоколе eBGP.
-Значение RD (Route Distinguisher) нужно установить для того, чтобы сделать уникальными маршруты к одному и тому же префиксу, но которые принадлежат разным VLANам. Политика экспорта из VLAN на анонсирующем VTEP должна совпадать с политикой импорта в VLAN назначения на принимающем VTEP. Зададим route-target как хх:100хх (как на импорт, так и на экспорт). Так же настроим распространение в EVPN информацию о всех изученных локально хостах в данных VLANах. В описании VRF так же настроим RD и RT, но с учетом того, что здесь надо уточнить семейство EVPN:
-```
-service routing protocols model multi-agent
-!
+router bgp 6500X
   vlan ХХ
       rd auto
       route-target both ХХ:100ХХ
       redistribute learned
    !
-   vrf CON_VRF
-      rd 10.1.X.1:100
-      route-target import evpn 100:10100
-      route-target export evpn 100:10100
-   !   
+!
+```
+
+Теперь настроим два VRF с транзитными VNI для каждой пары VLANов. При этом на Leaf 3, который соединен с файерволом настроим оба этих VRF. Это нужно сделать не только потому что клиенты находятся в разных VRF, но и потому в граничных лифах нам необходимо анонсировать маршруты со всех требуемых VLAN. Так же нужно в описании протокола BGP в секциях транзитных VRF сделать редистрибьюцию connected сетей для образования маршрутов RT-5:
+
+```
+vrf instance CON_VRFX
+!
+interface Vxlan1
+   vxlan vrf CON_VRFX vni 10X00
+!
+router bgp 6500X
+   vrf CON_VRFX
+      rd 10.1.X.1:X00
+      route-target import evpn X00:10X00
+      route-target export evpn X00:10X00
+      !
+      address-family ipv4
+         redistribute connected
+!
+```
+
+Далее настроим фильтрацию на лифе 3 для предотвращения трансляции маршрутов 2 типа файерволу. Будет отдавать ему только 5 тип, который уже включает в себя хостовые /32 маршруты типа 2:
+```
+ip prefix-list TYPE2_ROUTE
+   seq 10 permit 0.0.0.0/0 ge 32
+!
+route-map FW_ROUTES deny 10
+   match ip address prefix-list TYPE2_ROUTE
+!
+route-map FW_ROUTES permit 20
+!
+router bgp 65003
+   neighbor FW route-map FW_ROUTES out
+!
+```
+
+Затем настроим сам файервол FW. Включим маршрутизацию и построим BGP IPv4 соседство с Leaf 3 таким образом, что каждый линк будет соотвтествовть транзитной VRF на лифе. Так же передадим лифу, что файервол будет для его сетей гарантированным шлюзом по умолчанию:
+```
+ip routing
+!
+router bgp 65500
+   router-id 10.10.1.1
+   neighbor FABRIC peer group
+   neighbor FABRIC remote-as 65003
+   neighbor FABRIC bfd
+   neighbor FABRIC timers 3 9
+   neighbor FABRIC default-originate
+   neighbor 10.100.1.2 peer group FABRIC
+   neighbor 10.200.1.2 peer group FABRIC
+   !
+   address-family ipv4
+      neighbor 10.100.1.2 activate
+      neighbor 10.200.1.2 activate
+!
 ```
 
 Таким образом, итоговые конфигурации коммутаторов будут выглядеть так:
@@ -531,12 +563,10 @@ service routing protocols model multi-agent
 !
 hostname Leaf1
 !
-spanning-tree mode mstp
-!
 vlan 10
    name L3_NET1
 !
-vrf instance CON_VRF
+vrf instance CON_VRF1
 !
 interface Ethernet1
    mtu 9000
@@ -551,7 +581,6 @@ interface Ethernet2
 interface Ethernet3
    mtu 9000
    switchport access vlan 10
-   !
 !
 interface Ethernet4
 !
@@ -568,23 +597,22 @@ interface Loopback0
 !
 interface Management1
 !
+interface Vlan10
+   vrf CON_VRF1
+   ip address 192.168.10.201/24
+   ip virtual-router address 192.168.10.254/24
+!
 interface Vxlan1
    vxlan source-interface Loopback0
    vxlan udp-port 4789
    vxlan vlan 10 vni 10010
-   vxlan vrf CON_VRF vni 10100
+   vxlan vrf CON_VRF1 vni 10100
    vxlan learn-restrict any
 !
-interface Vlan10
-   vrf CON_VRF
-   ip address 192.168.10.201/24
-   ip virtual-router address 192.168.10.254/24
+ip virtual-router mac-address 12:00:00:00:00:00
 !
 ip routing
-!
-ip routing vrf CON_VRF
-!
-ip virtual-router mac-address 12:00:00:00:00:00
+ip routing vrf CON_VRF1
 !
 router bgp 65001
    router-id 10.1.1.1
@@ -609,19 +637,23 @@ router bgp 65001
       route-target both 10:10010
       redistribute learned
    !
-   vrf CON_VRF
-    rd 10.1.1.1:100
-    route-target import evpn 100:10100
-    route-target export evpn 100:10100
-   !   
    address-family evpn
       neighbor SPINE_NEIGHBOR_VXLAN activate
    !
    address-family ipv4
       neighbor SPINE_NEIGHBOR activate
       network 10.1.1.1/32
+   !
+   vrf CON_VRF1
+      rd 10.1.1.1:100
+      route-target import evpn 100:10100
+      route-target export evpn 100:10100
+      !
+      address-family ipv4
+         redistribute connected
 !
 end
+
 
 
 ```
@@ -633,12 +665,10 @@ service routing protocols model multi-agent
 !
 hostname Leaf2
 !
-spanning-tree mode mstp
-!
 vlan 20
    name L3_NET2
 !
-vrf instance CON_VRF
+vrf instance CON_VRF2
 !
 interface Ethernet1
    mtu 9000
@@ -669,23 +699,22 @@ interface Loopback0
 !
 interface Management1
 !
+interface Vlan20
+   vrf CON_VRF2
+   ip address 192.168.20.202/24
+   ip virtual-router address 192.168.20.254/24
+!
 interface Vxlan1
    vxlan source-interface Loopback0
    vxlan udp-port 4789
    vxlan vlan 20 vni 10020
-   vxlan vrf CON_VRF vni 10100
+   vxlan vrf CON_VRF2 vni 10200
    vxlan learn-restrict any
 !
-interface Vlan20
-   vrf CON_VRF
-   ip address 192.168.20.202/24
-   ip virtual-router address 192.168.20.254/24
+ip virtual-router mac-address 12:00:00:00:00:00
 !
 ip routing
-!
-ip routing vrf CON_VRF
-!
-ip virtual-router mac-address 12:00:00:00:00:00
+ip routing vrf CON_VRF2
 !
 router bgp 65002
    router-id 10.1.2.1
@@ -710,17 +739,20 @@ router bgp 65002
       route-target both 20:10020
       redistribute learned
    !
-   vrf CON_VRF
-    rd 10.1.2.1:100
-    route-target import evpn 100:10100
-    route-target export evpn 100:10100
-   !   
    address-family evpn
       neighbor SPINE_NEIGHBOR_VXLAN activate
    !
    address-family ipv4
       neighbor SPINE_NEIGHBOR activate
       network 10.1.2.1/32
+   !
+   vrf CON_VRF2
+      rd 10.1.2.1:200
+      route-target import evpn 200:10200
+      route-target export evpn 200:10200
+      !
+      address-family ipv4
+         redistribute connected
 !
 end
 
@@ -740,7 +772,9 @@ vlan 30
 vlan 40
    name L3_NET4
 !
-vrf instance CON_VRF
+vrf instance CON_VRF1
+!
+vrf instance CON_VRF2
 !
 interface Ethernet1
    mtu 9000
@@ -760,11 +794,17 @@ interface Ethernet4
    mtu 9000
    switchport access vlan 40
 !
-interface Ethernet4
-!
 interface Ethernet5
+   mtu 9000
+   no switchport
+   vrf CON_VRF1
+   ip address 10.100.1.2/30
 !
 interface Ethernet6
+   mtu 9000
+   no switchport
+   vrf CON_VRF2
+   ip address 10.200.1.2/30
 !
 interface Ethernet7
 !
@@ -775,33 +815,48 @@ interface Loopback0
 !
 interface Management1
 !
+interface Vlan30
+   vrf CON_VRF1
+   ip address 192.168.30.203/24
+   ip virtual-router address 192.168.30.254/24
+!
+interface Vlan40
+   vrf CON_VRF2
+   ip address 192.168.40.204/24
+   ip virtual-router address 192.168.40.254/24
+!
 interface Vxlan1
    vxlan source-interface Loopback0
    vxlan udp-port 4789
    vxlan vlan 30 vni 10030
    vxlan vlan 40 vni 10040
-   vxlan vrf CON_VRF vni 10100
+   vxlan vrf CON_VRF1 vni 10100
+   vxlan vrf CON_VRF2 vni 10200
    vxlan learn-restrict any
 !
-interface Vlan30
-   vrf CON_VRF
-   ip address 192.168.30.203/24
-   ip virtual-router address 192.168.30.254/24
-!
-interface Vlan40
-   vrf CON_VRF
-   ip address 192.168.40.204/24
-   ip virtual-router address 192.168.40.254/24
+ip virtual-router mac-address 12:00:00:00:00:00
 !
 ip routing
+ip routing vrf CON_VRF1
+ip routing vrf CON_VRF2
 !
-ip routing vrf CON_VRF
+ip prefix-list TYPE2_ROUTE
+   seq 10 permit 0.0.0.0/0 ge 32
 !
-ip virtual-router mac-address 12:00:00:00:00:00
+route-map FW_ROUTES deny 10
+   match ip address prefix-list TYPE2_ROUTE
+!
+route-map FW_ROUTES permit 20
 !
 router bgp 65003
    router-id 10.1.3.1
    maximum-paths 2 ecmp 2
+   neighbor FW peer group
+   neighbor FW remote-as 65500
+   neighbor FW bfd
+   neighbor FW allowas-in 3
+   neighbor FW timers 3 9
+   neighbor FW route-map FW_ROUTES out
    neighbor SPINE_NEIGHBOR peer group
    neighbor SPINE_NEIGHBOR remote-as 65000
    neighbor SPINE_NEIGHBOR out-delay 0
@@ -827,17 +882,88 @@ router bgp 65003
       route-target both 40:10040
       redistribute learned
    !
-   vrf CON_VRF
-    rd 10.1.3.1:100
-    route-target import evpn 100:10100
-    route-target export evpn 100:10100
-   !   
    address-family evpn
       neighbor SPINE_NEIGHBOR_VXLAN activate
    !
    address-family ipv4
+      neighbor FW activate
+      neighbor FW next-hop address-family ipv6 originate
       neighbor SPINE_NEIGHBOR activate
       network 10.1.3.1/32
+   !
+   vrf CON_VRF1
+      rd 10.1.3.1:100
+      route-target import evpn 100:10100
+      route-target export evpn 100:10100
+      router-id 10.1.3.1
+      neighbor 10.100.1.1 peer group FW
+      !
+      address-family ipv4
+         redistribute connected
+   !
+   vrf CON_VRF2
+      rd 10.1.3.1:200
+      route-target import evpn 200:10200
+      route-target export evpn 200:10200
+      router-id 10.1.3.1
+      neighbor 10.200.1.1 peer group FW
+      !
+      address-family ipv4
+         redistribute connected
+!
+end
+
+
+```
+
+#### FW
+```
+hostname FW
+!
+spanning-tree mode mstp
+!
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 10.100.1.1/30
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 10.200.1.1/30
+!
+interface Ethernet3
+!
+interface Ethernet4
+!
+interface Ethernet5
+!
+interface Ethernet6
+!
+interface Ethernet7
+!
+interface Ethernet8
+!
+interface Loopback0
+   ip address 10.10.1.1/32
+!
+interface Management1
+!
+ip routing
+!
+router bgp 65500
+   router-id 10.10.1.1
+   neighbor FABRIC peer group
+   neighbor FABRIC remote-as 65003
+   neighbor FABRIC bfd
+   neighbor FABRIC timers 3 9
+   neighbor FABRIC default-originate
+   neighbor 10.100.1.2 peer group FABRIC
+   neighbor 10.200.1.2 peer group FABRIC
+   !
+   address-family ipv4
+      neighbor 10.100.1.2 activate
+      neighbor 10.200.1.2 activate
 !
 end
 
