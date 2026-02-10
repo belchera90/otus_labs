@@ -979,61 +979,24 @@ end
  Как видим Client1 видит Client2, Client3, а так же Client4.
 
 
- Далее посмотрим eBGP соседей на спайнах, а так же состояние сессий:
-<details>
-<summary> Neighbors </summary>
-  
- #### Spine 1
- ```
 
-Spine1#sh bgp sum
-BGP summary information for VRF default
-Router identifier 10.0.1.1, local AS number 65000
-Neighbor           AS Session State AFI/SAFI                AFI/SAFI State   NLRI Rcd   NLRI Acc
---------- ----------- ------------- ----------------------- -------------- ---------- ----------
-10.1.1.1        65001 Established   IPv4 Unicast            Negotiated              1          1
-10.1.1.1        65001 Established   L2VPN EVPN              Negotiated              1          1
-10.1.2.1        65002 Established   IPv4 Unicast            Negotiated              1          1
-10.1.2.1        65002 Established   L2VPN EVPN              Negotiated              1          1
-10.1.3.1        65003 Established   IPv4 Unicast            Negotiated              1          1
-10.1.3.1        65003 Established   L2VPN EVPN              Negotiated              2          2
-10.2.1.2        65001 Established   IPv4 Unicast            Negotiated              1          1
-10.2.1.6        65002 Established   IPv4 Unicast            Negotiated              1          1
-10.2.1.10       65003 Established   IPv4 Unicast            Negotiated              1          1
-
- ```
- #### Spine 2
- ```
-Spine2#sh bgp sum
-BGP summary information for VRF default
-Router identifier 10.0.2.1, local AS number 65000
-Neighbor           AS Session State AFI/SAFI                AFI/SAFI State   NLRI Rcd   NLRI Acc
---------- ----------- ------------- ----------------------- -------------- ---------- ----------
-10.1.1.1        65001 Established   IPv4 Unicast            Negotiated              1          1
-10.1.1.1        65001 Established   L2VPN EVPN              Negotiated              1          1
-10.1.2.1        65002 Established   IPv4 Unicast            Negotiated              1          1
-10.1.2.1        65002 Established   L2VPN EVPN              Negotiated              1          1
-10.1.3.1        65003 Established   IPv4 Unicast            Negotiated              1          1
-10.1.3.1        65003 Established   L2VPN EVPN              Negotiated              2          2
-10.2.2.2        65001 Established   IPv4 Unicast            Negotiated              1          1
-10.2.2.6        65002 Established   IPv4 Unicast            Negotiated              1          1
-10.2.2.10       65003 Established   IPv4 Unicast            Negotiated              1          1
-
- ```
- </details>
-
-Как видим - IPv4 и EVPN соседи активны.
  
  Так же посмотрим EVPN маршруты типа 2 и 3 на каждом leaf-коммутаторе:
  
  <details>
- <summary> Type 2,3 </summary>
+ <summary> Type 5 </summary>
  
 
  #### Leaf 1
  ```
 
-Leaf1#sh bgp evpn
+Leaf1#sh bgp evpn route-type ip-prefix ?
+  A.B.C.D/E          IPv4 address prefix
+  A:B:C:D:E:F:G:H/I  IPv6 address prefix
+  ipv4               Limit address family to IPv4
+  ipv6               Limit address family to IPv6
+
+Leaf1#sh bgp evpn route-type ip-prefix ipv4
 BGP routing table information for VRF default
 Router identifier 10.1.1.1, local AS number 65001
 Route status codes: * - valid, > - active, S - Stale, E - ECMP head, e - ECMP
@@ -1042,47 +1005,51 @@ Origin codes: i - IGP, e - EGP, ? - incomplete
 AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Link Local Nexthop
 
           Network                Next Hop              Metric  LocPref Weight  Path
- * >      RD: 10.1.1.1:10 mac-ip 0050.7966.6806
+ * >Ec    RD: 10.1.3.1:100 ip-prefix 0.0.0.0/0
+                                 10.1.3.1              -       100     0       65000 65003 65500 ?
+ *  ec    RD: 10.1.3.1:100 ip-prefix 0.0.0.0/0
+                                 10.1.3.1              -       100     0       65000 65003 65500 ?
+ * >Ec    RD: 10.1.3.1:200 ip-prefix 0.0.0.0/0
+                                 10.1.3.1              -       100     0       65000 65003 65500 ?
+ *  ec    RD: 10.1.3.1:200 ip-prefix 0.0.0.0/0
+                                 10.1.3.1              -       100     0       65000 65003 65500 ?
+ * >Ec    RD: 10.1.3.1:100 ip-prefix 10.100.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:100 ip-prefix 10.100.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >Ec    RD: 10.1.3.1:200 ip-prefix 10.100.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ *  ec    RD: 10.1.3.1:200 ip-prefix 10.100.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ * >Ec    RD: 10.1.3.1:100 ip-prefix 10.200.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ *  ec    RD: 10.1.3.1:100 ip-prefix 10.200.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ * >Ec    RD: 10.1.3.1:200 ip-prefix 10.200.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:200 ip-prefix 10.200.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >      RD: 10.1.1.1:100 ip-prefix 192.168.10.0/24
                                  -                     -       -       0       i
- * >      RD: 10.1.1.1:10 mac-ip 0050.7966.6806 192.168.10.101
-                                 -                     -       -       0       i
- * >Ec    RD: 10.1.2.1:20 mac-ip 0050.7966.6807
+ * >Ec    RD: 10.1.2.1:200 ip-prefix 192.168.20.0/24
                                  10.1.2.1              -       100     0       65000 65002 i
- *  ec    RD: 10.1.2.1:20 mac-ip 0050.7966.6807
+ *  ec    RD: 10.1.2.1:200 ip-prefix 192.168.20.0/24
                                  10.1.2.1              -       100     0       65000 65002 i
- * >Ec    RD: 10.1.2.1:20 mac-ip 0050.7966.6807 192.168.20.102
-                                 10.1.2.1              -       100     0       65000 65002 i
- *  ec    RD: 10.1.2.1:20 mac-ip 0050.7966.6807 192.168.20.102
-                                 10.1.2.1              -       100     0       65000 65002 i
- * >Ec    RD: 10.1.3.1:30 mac-ip 0050.7966.6808
+ * >Ec    RD: 10.1.3.1:100 ip-prefix 192.168.30.0/24
                                  10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:30 mac-ip 0050.7966.6808
+ *  ec    RD: 10.1.3.1:100 ip-prefix 192.168.30.0/24
                                  10.1.3.1              -       100     0       65000 65003 i
- * >Ec    RD: 10.1.3.1:30 mac-ip 0050.7966.6808 192.168.30.103
+ * >Ec    RD: 10.1.3.1:200 ip-prefix 192.168.30.0/24
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ *  ec    RD: 10.1.3.1:200 ip-prefix 192.168.30.0/24
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ * >Ec    RD: 10.1.3.1:100 ip-prefix 192.168.40.0/24
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ *  ec    RD: 10.1.3.1:100 ip-prefix 192.168.40.0/24
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ * >Ec    RD: 10.1.3.1:200 ip-prefix 192.168.40.0/24
                                  10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:30 mac-ip 0050.7966.6808 192.168.30.103
-                                 10.1.3.1              -       100     0       65000 65003 i
- * >Ec    RD: 10.1.3.1:40 mac-ip 0050.7966.6809
-                                 10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:40 mac-ip 0050.7966.6809
-                                 10.1.3.1              -       100     0       65000 65003 i
- * >Ec    RD: 10.1.3.1:40 mac-ip 0050.7966.6809 192.168.40.104
-                                 10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:40 mac-ip 0050.7966.6809 192.168.40.104
-                                 10.1.3.1              -       100     0       65000 65003 i
- * >      RD: 10.1.1.1:10 imet 10.1.1.1
-                                 -                     -       -       0       i
- * >Ec    RD: 10.1.2.1:20 imet 10.1.2.1
-                                 10.1.2.1              -       100     0       65000 65002 i
- *  ec    RD: 10.1.2.1:20 imet 10.1.2.1
-                                 10.1.2.1              -       100     0       65000 65002 i
- * >Ec    RD: 10.1.3.1:30 imet 10.1.3.1
-                                 10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:30 imet 10.1.3.1
-                                 10.1.3.1              -       100     0       65000 65003 i
- * >Ec    RD: 10.1.3.1:40 imet 10.1.3.1
-                                 10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:40 imet 10.1.3.1
+ *  ec    RD: 10.1.3.1:200 ip-prefix 192.168.40.0/24
                                  10.1.3.1              -       100     0       65000 65003 i
 
  ```
@@ -1090,7 +1057,7 @@ AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Li
  #### Leaf 2
  ```
 
-Leaf2#sh bgp evpn
+Leaf2#sh bgp evpn route-type ip-prefix ipv4
 BGP routing table information for VRF default
 Router identifier 10.1.2.1, local AS number 65002
 Route status codes: * - valid, > - active, S - Stale, E - ECMP head, e - ECMP
@@ -1099,55 +1066,60 @@ Origin codes: i - IGP, e - EGP, ? - incomplete
 AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Link Local Nexthop
 
           Network                Next Hop              Metric  LocPref Weight  Path
- * >Ec    RD: 10.1.1.1:10 mac-ip 0050.7966.6806
+ * >Ec    RD: 10.1.3.1:100 ip-prefix 0.0.0.0/0
+                                 10.1.3.1              -       100     0       65000 65003 65500 ?
+ *  ec    RD: 10.1.3.1:100 ip-prefix 0.0.0.0/0
+                                 10.1.3.1              -       100     0       65000 65003 65500 ?
+ * >Ec    RD: 10.1.3.1:200 ip-prefix 0.0.0.0/0
+                                 10.1.3.1              -       100     0       65000 65003 65500 ?
+ *  ec    RD: 10.1.3.1:200 ip-prefix 0.0.0.0/0
+                                 10.1.3.1              -       100     0       65000 65003 65500 ?
+ * >Ec    RD: 10.1.3.1:100 ip-prefix 10.100.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:100 ip-prefix 10.100.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >Ec    RD: 10.1.3.1:200 ip-prefix 10.100.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ *  ec    RD: 10.1.3.1:200 ip-prefix 10.100.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ * >Ec    RD: 10.1.3.1:100 ip-prefix 10.200.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ *  ec    RD: 10.1.3.1:100 ip-prefix 10.200.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ * >Ec    RD: 10.1.3.1:200 ip-prefix 10.200.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:200 ip-prefix 10.200.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >Ec    RD: 10.1.1.1:100 ip-prefix 192.168.10.0/24
                                  10.1.1.1              -       100     0       65000 65001 i
- *  ec    RD: 10.1.1.1:10 mac-ip 0050.7966.6806
+ *  ec    RD: 10.1.1.1:100 ip-prefix 192.168.10.0/24
                                  10.1.1.1              -       100     0       65000 65001 i
- * >Ec    RD: 10.1.1.1:10 mac-ip 0050.7966.6806 192.168.10.101
-                                 10.1.1.1              -       100     0       65000 65001 i
- *  ec    RD: 10.1.1.1:10 mac-ip 0050.7966.6806 192.168.10.101
-                                 10.1.1.1              -       100     0       65000 65001 i
- * >      RD: 10.1.2.1:20 mac-ip 0050.7966.6807
+ * >      RD: 10.1.2.1:200 ip-prefix 192.168.20.0/24
                                  -                     -       -       0       i
- * >      RD: 10.1.2.1:20 mac-ip 0050.7966.6807 192.168.20.102
-                                 -                     -       -       0       i
- * >Ec    RD: 10.1.3.1:30 mac-ip 0050.7966.6808
+ * >Ec    RD: 10.1.3.1:100 ip-prefix 192.168.30.0/24
                                  10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:30 mac-ip 0050.7966.6808
+ *  ec    RD: 10.1.3.1:100 ip-prefix 192.168.30.0/24
                                  10.1.3.1              -       100     0       65000 65003 i
- * >Ec    RD: 10.1.3.1:30 mac-ip 0050.7966.6808 192.168.30.103
+ * >Ec    RD: 10.1.3.1:200 ip-prefix 192.168.30.0/24
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ *  ec    RD: 10.1.3.1:200 ip-prefix 192.168.30.0/24
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ * >Ec    RD: 10.1.3.1:100 ip-prefix 192.168.40.0/24
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ *  ec    RD: 10.1.3.1:100 ip-prefix 192.168.40.0/24
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ * >Ec    RD: 10.1.3.1:200 ip-prefix 192.168.40.0/24
                                  10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:30 mac-ip 0050.7966.6808 192.168.30.103
+ *  ec    RD: 10.1.3.1:200 ip-prefix 192.168.40.0/24
                                  10.1.3.1              -       100     0       65000 65003 i
- * >Ec    RD: 10.1.3.1:40 mac-ip 0050.7966.6809
-                                 10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:40 mac-ip 0050.7966.6809
-                                 10.1.3.1              -       100     0       65000 65003 i
- * >Ec    RD: 10.1.3.1:40 mac-ip 0050.7966.6809 192.168.40.104
-                                 10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:40 mac-ip 0050.7966.6809 192.168.40.104
-                                 10.1.3.1              -       100     0       65000 65003 i
- * >Ec    RD: 10.1.1.1:10 imet 10.1.1.1
-                                 10.1.1.1              -       100     0       65000 65001 i
- *  ec    RD: 10.1.1.1:10 imet 10.1.1.1
-                                 10.1.1.1              -       100     0       65000 65001 i
- * >      RD: 10.1.2.1:20 imet 10.1.2.1
-                                 -                     -       -       0       i
- * >Ec    RD: 10.1.3.1:30 imet 10.1.3.1
-                                 10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:30 imet 10.1.3.1
-                                 10.1.3.1              -       100     0       65000 65003 i
- * >Ec    RD: 10.1.3.1:40 imet 10.1.3.1
-                                 10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:40 imet 10.1.3.1
-                                 10.1.3.1              -       100     0       65000 65003 i
+
    
  ```
 
  #### Leaf 3
  ```
 
-Leaf3#sh bgp evpn
+Leaf3#sh bgp evpn route-type ip-prefix ipv4
 BGP routing table information for VRF default
 Router identifier 10.1.3.1, local AS number 65003
 Route status codes: * - valid, > - active, S - Stale, E - ECMP head, e - ECMP
@@ -1156,42 +1128,39 @@ Origin codes: i - IGP, e - EGP, ? - incomplete
 AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Link Local Nexthop
 
           Network                Next Hop              Metric  LocPref Weight  Path
- * >Ec    RD: 10.1.1.1:10 mac-ip 0050.7966.6806
-                                 10.1.1.1              -       100     0       65000 65001 i
- *  ec    RD: 10.1.1.1:10 mac-ip 0050.7966.6806
-                                 10.1.1.1              -       100     0       65000 65001 i
- * >Ec    RD: 10.1.1.1:10 mac-ip 0050.7966.6806 192.168.10.101
-                                 10.1.1.1              -       100     0       65000 65001 i
- *  ec    RD: 10.1.1.1:10 mac-ip 0050.7966.6806 192.168.10.101
-                                 10.1.1.1              -       100     0       65000 65001 i
- * >Ec    RD: 10.1.2.1:20 mac-ip 0050.7966.6807
-                                 10.1.2.1              -       100     0       65000 65002 i
- *  ec    RD: 10.1.2.1:20 mac-ip 0050.7966.6807
-                                 10.1.2.1              -       100     0       65000 65002 i
- * >Ec    RD: 10.1.2.1:20 mac-ip 0050.7966.6807 192.168.20.102
-                                 10.1.2.1              -       100     0       65000 65002 i
- *  ec    RD: 10.1.2.1:20 mac-ip 0050.7966.6807 192.168.20.102
-                                 10.1.2.1              -       100     0       65000 65002 i
- * >      RD: 10.1.3.1:30 mac-ip 0050.7966.6808
+ * >      RD: 10.1.3.1:100 ip-prefix 0.0.0.0/0
+                                 -                     -       100     0       65500 ?
+ * >      RD: 10.1.3.1:200 ip-prefix 0.0.0.0/0
+                                 -                     -       100     0       65500 ?
+ * >      RD: 10.1.3.1:100 ip-prefix 10.100.1.0/30
                                  -                     -       -       0       i
- * >      RD: 10.1.3.1:30 mac-ip 0050.7966.6808 192.168.30.103
+ * >      RD: 10.1.3.1:200 ip-prefix 10.100.1.0/30
+                                 -                     -       100     0       65500 65003 i
+ * >      RD: 10.1.3.1:100 ip-prefix 10.200.1.0/30
+                                 -                     -       100     0       65500 65003 i
+ * >      RD: 10.1.3.1:200 ip-prefix 10.200.1.0/30
                                  -                     -       -       0       i
- * >      RD: 10.1.3.1:40 mac-ip 0050.7966.6809
-                                 -                     -       -       0       i
- * >      RD: 10.1.3.1:40 mac-ip 0050.7966.6809 192.168.40.104
-                                 -                     -       -       0       i
- * >Ec    RD: 10.1.1.1:10 imet 10.1.1.1
+ * >Ec    RD: 10.1.1.1:100 ip-prefix 192.168.10.0/24
                                  10.1.1.1              -       100     0       65000 65001 i
- *  ec    RD: 10.1.1.1:10 imet 10.1.1.1
+ *  ec    RD: 10.1.1.1:100 ip-prefix 192.168.10.0/24
                                  10.1.1.1              -       100     0       65000 65001 i
- * >Ec    RD: 10.1.2.1:20 imet 10.1.2.1
+ * >      RD: 10.1.3.1:200 ip-prefix 192.168.10.0/24
+                                 -                     -       100     0       65500 65003 65000 65001 i
+ * >Ec    RD: 10.1.2.1:200 ip-prefix 192.168.20.0/24
                                  10.1.2.1              -       100     0       65000 65002 i
- *  ec    RD: 10.1.2.1:20 imet 10.1.2.1
+ *  ec    RD: 10.1.2.1:200 ip-prefix 192.168.20.0/24
                                  10.1.2.1              -       100     0       65000 65002 i
- * >      RD: 10.1.3.1:30 imet 10.1.3.1
+ * >      RD: 10.1.3.1:100 ip-prefix 192.168.20.0/24
+                                 -                     -       100     0       65500 65003 65000 65002 i
+ * >      RD: 10.1.3.1:100 ip-prefix 192.168.30.0/24
                                  -                     -       -       0       i
- * >      RD: 10.1.3.1:40 imet 10.1.3.1
+ * >      RD: 10.1.3.1:200 ip-prefix 192.168.30.0/24
+                                 -                     -       100     0       65500 65003 i
+ * >      RD: 10.1.3.1:100 ip-prefix 192.168.40.0/24
+                                 -                     -       100     0       65500 65003 i
+ * >      RD: 10.1.3.1:200 ip-prefix 192.168.40.0/24
                                  -                     -       -       0       i
+
    
  ```
 
@@ -1201,101 +1170,107 @@ AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Li
 
 Проверим EVI и убедимся, что комммутатор получил всю необходимую информацию:
 
- #### Leaf 1
+ #### FW
  ```
-Leaf1#show bgp evpn instance
-EVPN instance: VLAN 10
-  Route distinguisher: 0:0
-  Route target import: Route-Target-AS:10:10010
-  Route target export: Route-Target-AS:10:10010
-  Service interface: VLAN-based
-  Local VXLAN IP address: 10.1.1.1
-  VXLAN: enabled
-  MPLS: disabled
-Leaf1#show vxlan vni
-VNI to VLAN Mapping for Vxlan1
-VNI         VLAN       Source       Interface       802.1Q Tag
------------ ---------- ------------ --------------- ----------
-10010       10         static       Ethernet3       untagged
-                                    Vxlan1          10
+FW#sh bgp summary
+BGP summary information for VRF default
+Router identifier 10.10.1.1, local AS number 65500
+Neighbor            AS Session State AFI/SAFI                AFI/SAFI State   NLRI Rcd   NLRI Acc
+---------- ----------- ------------- ----------------------- -------------- ---------- ----------
+10.100.1.2       65003 Established   IPv4 Unicast            Negotiated              3          3
+10.200.1.2       65003 Established   IPv4 Unicast            Negotiated              3          3
 
-VNI to dynamic VLAN Mapping for Vxlan1
-VNI         VLAN       VRF           Source
------------ ---------- ------------- ------------
-10100       4094       CON_VRF       evpn
+FW#sh ip route
+
+VRF: default
+Codes: C - connected, S - static, K - kernel,
+       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
+       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
+       N2 - OSPF NSSA external type2, B - Other BGP Routes,
+       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
+       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
+       A O - OSPF Summary, NG - Nexthop Group Static Route,
+       V - VXLAN Control Service, M - Martian,
+       DH - DHCP client installed default route,
+       DP - Dynamic Policy Route, L - VRF Leaked,
+       G  - gRIBI, RC - Route Cache Route
+
+Gateway of last resort is not set
+
+ C        10.10.1.1/32 is directly connected, Loopback0
+ C        10.100.1.0/30 is directly connected, Ethernet1
+ C        10.200.1.0/30 is directly connected, Ethernet2
+ B E      192.168.10.0/24 [200/0] via 10.100.1.2, Ethernet1
+ B E      192.168.20.0/24 [200/0] via 10.200.1.2, Ethernet2
+ B E      192.168.30.0/24 [200/0] via 10.100.1.2, Ethernet1
+ B E      192.168.40.0/24 [200/0] via 10.200.1.2, Ethernet2
+
+ ```
+
+
+
+
+
+
+
+ #### Leaf 3
+ ```
+Leaf3#show ip route vrf CON_VRF1
+
+VRF: CON_VRF1
+Codes: C - connected, S - static, K - kernel,
+       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
+       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
+       N2 - OSPF NSSA external type2, B - Other BGP Routes,
+       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
+       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
+       A O - OSPF Summary, NG - Nexthop Group Static Route,
+       V - VXLAN Control Service, M - Martian,
+       DH - DHCP client installed default route,
+       DP - Dynamic Policy Route, L - VRF Leaked,
+       G  - gRIBI, RC - Route Cache Route
+
+Gateway of last resort:
+ B E      0.0.0.0/0 [200/0] via 10.100.1.1, Ethernet5
+
+ C        10.100.1.0/30 is directly connected, Ethernet5
+ B E      10.200.1.0/30 [200/0] via 10.100.1.1, Ethernet5
+ B E      192.168.10.101/32 [200/0] via VTEP 10.1.1.1 VNI 10100 router-mac 50:00:00:d7:ee:0b local-interface Vxlan1
+ B E      192.168.10.0/24 [200/0] via VTEP 10.1.1.1 VNI 10100 router-mac 50:00:00:d7:ee:0b local-interface Vxlan1
+ B E      192.168.20.0/24 [200/0] via 10.100.1.1, Ethernet5
+ C        192.168.30.0/24 is directly connected, Vlan30
+ B E      192.168.40.0/24 [200/0] via 10.100.1.1, Ethernet5
+
+Leaf3#show ip route vrf CON_VRF2
+
+VRF: CON_VRF2
+Codes: C - connected, S - static, K - kernel,
+       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
+       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
+       N2 - OSPF NSSA external type2, B - Other BGP Routes,
+       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
+       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
+       A O - OSPF Summary, NG - Nexthop Group Static Route,
+       V - VXLAN Control Service, M - Martian,
+       DH - DHCP client installed default route,
+       DP - Dynamic Policy Route, L - VRF Leaked,
+       G  - gRIBI, RC - Route Cache Route
+
+Gateway of last resort:
+ B E      0.0.0.0/0 [200/0] via 10.200.1.1, Ethernet6
+
+ B E      10.100.1.0/30 [200/0] via 10.200.1.1, Ethernet6
+ C        10.200.1.0/30 is directly connected, Ethernet6
+ B E      192.168.10.0/24 [200/0] via 10.200.1.1, Ethernet6
+ B E      192.168.20.0/24 [200/0] via VTEP 10.1.2.1 VNI 10200 router-mac 50:00:00:d5:5d:c0 local-interface Vxlan1
+ B E      192.168.30.0/24 [200/0] via 10.200.1.1, Ethernet6
+ C        192.168.40.0/24 is directly connected, Vlan40
 
 
  ```
  #### Leaf 2
  ```
-Leaf2#show bgp evpn instance
-EVPN instance: VLAN 20
-  Route distinguisher: 0:0
-  Route target import: Route-Target-AS:20:10020
-  Route target export: Route-Target-AS:20:10020
-  Service interface: VLAN-based
-  Local VXLAN IP address: 10.1.2.1
-  VXLAN: enabled
-  MPLS: disabled
-Leaf2#show vxlan vni
-VNI to VLAN Mapping for Vxlan1
-VNI         VLAN       Source       Interface       802.1Q Tag
------------ ---------- ------------ --------------- ----------
-10020       20         static       Ethernet3       untagged
-                                    Vxlan1          20
-
-VNI to dynamic VLAN Mapping for Vxlan1
-VNI         VLAN       VRF           Source
------------ ---------- ------------- ------------
-10100       4094       CON_VRF       evpn
-
- ```
- #### Leaf 3
- ```
-Leaf3#show bgp evpn instance
-EVPN instance: VLAN 30
-  Route distinguisher: 0:0
-  Route target import: Route-Target-AS:30:10030
-  Route target export: Route-Target-AS:30:10030
-  Service interface: VLAN-based
-  Local VXLAN IP address: 10.1.3.1
-  VXLAN: enabled
-  MPLS: disabled
-EVPN instance: VLAN 40
-  Route distinguisher: 0:0
-  Route target import: Route-Target-AS:40:10040
-  Route target export: Route-Target-AS:40:10040
-  Service interface: VLAN-based
-  Local VXLAN IP address: 10.1.3.1
-  VXLAN: enabled
-  MPLS: disabled
-Leaf3#show vxlan vni
-VNI to VLAN Mapping for Vxlan1
-VNI         VLAN       Source       Interface       802.1Q Tag
------------ ---------- ------------ --------------- ----------
-10030       30         static       Ethernet3       untagged
-                                    Vxlan1          30
-10040       40         static       Ethernet4       untagged
-                                    Vxlan1          40
-
-VNI to dynamic VLAN Mapping for Vxlan1
-VNI         VLAN       VRF           Source
------------ ---------- ------------- ------------
-10100       4094       CON_VRF       evpn
-
-
- ```
-
-</br>
-
-Взглянем на таблицу маршрутизации CON_VRF:
-
-#### Leaf 1
-```
-
-Leaf1#show ip route vrf CON_VRF
-
-VRF: CON_VRF
+VRF: CON_VRF2
 Codes: C - connected, S - static, K - kernel,
        O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
        E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
@@ -1308,48 +1283,22 @@ Codes: C - connected, S - static, K - kernel,
        DP - Dynamic Policy Route, L - VRF Leaked,
        G  - gRIBI, RC - Route Cache Route
 
-Gateway of last resort is not set
+Gateway of last resort:
+ B E      0.0.0.0/0 [200/0] via VTEP 10.1.3.1 VNI 10200 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
 
- C        192.168.10.0/24 is directly connected, Vlan10
- B E      192.168.20.102/32 [200/0] via VTEP 10.1.2.1 VNI 10100 router-mac 50:00:00:d5:5d:c0 local-interface Vxlan1
- B E      192.168.30.103/32 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
- B E      192.168.40.104/32 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
-
- ```
-
-#### Leaf 2
-```
-
-Leaf2#show ip route vrf CON_VRF
-
-VRF: CON_VRF
-Codes: C - connected, S - static, K - kernel,
-       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
-       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
-       N2 - OSPF NSSA external type2, B - Other BGP Routes,
-       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
-       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
-       A O - OSPF Summary, NG - Nexthop Group Static Route,
-       V - VXLAN Control Service, M - Martian,
-       DH - DHCP client installed default route,
-       DP - Dynamic Policy Route, L - VRF Leaked,
-       G  - gRIBI, RC - Route Cache Route
-
-Gateway of last resort is not set
-
- B E      192.168.10.101/32 [200/0] via VTEP 10.1.1.1 VNI 10100 router-mac 50:00:00:d7:ee:0b local-interface Vxlan1
+ B E      10.100.1.0/30 [200/0] via VTEP 10.1.3.1 VNI 10200 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
+ B E      10.200.1.0/30 [200/0] via VTEP 10.1.3.1 VNI 10200 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
  C        192.168.20.0/24 is directly connected, Vlan20
- B E      192.168.30.103/32 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
- B E      192.168.40.104/32 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
+ B E      192.168.30.0/24 [200/0] via VTEP 10.1.3.1 VNI 10200 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
+ B E      192.168.40.0/24 [200/0] via VTEP 10.1.3.1 VNI 10200 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
 
- ```
 
-#### Leaf 3
 ```
+ #### Leaf 1
+ ```
+Leaf1#show ip route vrf CON_VRF1
 
-Leaf3#show ip route vrf CON_VRF
-
-VRF: CON_VRF
+VRF: CON_VRF1
 Codes: C - connected, S - static, K - kernel,
        O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
        E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
@@ -1362,13 +1311,14 @@ Codes: C - connected, S - static, K - kernel,
        DP - Dynamic Policy Route, L - VRF Leaked,
        G  - gRIBI, RC - Route Cache Route
 
-Gateway of last resort is not set
+Gateway of last resort:
+ B E      0.0.0.0/0 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
 
- B E      192.168.10.101/32 [200/0] via VTEP 10.1.1.1 VNI 10100 router-mac 50:00:00:d7:ee:0b local-interface Vxlan1
- B E      192.168.20.102/32 [200/0] via VTEP 10.1.2.1 VNI 10100 router-mac 50:00:00:d5:5d:c0 local-interface Vxlan1
- C        192.168.30.0/24 is directly connected, Vlan30
- C        192.168.40.0/24 is directly connected, Vlan40
-
+ B E      10.100.1.0/30 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
+ B E      10.200.1.0/30 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
+ C        192.168.10.0/24 is directly connected, Vlan10
+ B E      192.168.30.0/24 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
+ B E      192.168.40.0/24 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
  ```
-
-Видно, что коммутатор установил в таблицу маршрутизации маршруты до других клиентов, доступных в других VNI(определены IP-адрес удаленного VTEP'а, номер VNI, Router's MAC VTEP'а, а также локальный VXLAN-интерфейс).
+</br>
+ 
