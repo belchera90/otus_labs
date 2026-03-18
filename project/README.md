@@ -36,6 +36,7 @@
 
 <details>
 <summary> ЦОД 1 </summary>
+  
 |Device|Interface|IP Address|Subnet Mask
 |---|---|---|---|
 Spine1|lo1|10.1.1.1|255.255.255.255
@@ -84,6 +85,7 @@ FW|tunnel13|172.16.13.1|255.255.255.252
 
 <details>
 <summary> ЦОД 2 </summary>
+  
 |Device|Interface|IP Address|Subnet Mask
 |---|---|---|---|
 Spine1|lo1|10.1.2.1|255.255.255.255
@@ -131,9 +133,9 @@ FW|tunnel13|172.16.13.2|255.255.255.252
 </details>
 
 ### Настройки сетевого оборудования:
-
+# ЦОД 1
 <details>
-<summary> ЦОД 1 </summary>
+<summary> Spines </summary>
   
 #### Spine 1
 ```
@@ -279,6 +281,10 @@ router bgp 65001
 end
 
 ```
+</details>
+
+<details>
+<summary> Leafs </summary>
   
 #### Leaf 1
 ```
@@ -718,7 +724,11 @@ router bgp 65001
 end
 
 ```
+</details>
 
+<details>
+<summary> Firewall </summary>
+  
 #### FW
 ```
 service routing protocols model multi-agent
@@ -878,6 +888,11 @@ router bgp 65001
 end
 
 ```
+</details>
+
+<details>
+<summary> Clients </summary>
+  
 #### Client 1
 ```
 hostname Client1
