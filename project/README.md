@@ -1,7 +1,7 @@
 Проектирование распределенной L3 сети ЦОД с применением технологии multisite с применением GRE\IPSEC туннеля без внедрения L2
 =====================================
 
-### Цель: 
+## Цель: 
 
 - Разработать масштабируемую архитектуру распределенной сети ЦОД
 - Реализовать отказоустойчивый underlay с применением защищенного туннеля для траффика проходящего через сеть ИНтернет
@@ -10,7 +10,7 @@
 - Организовать контролируемое взаимодействие между ЦОДами
 - Подтвердить работоспособность и отказоустойчивость спроектированного решения
 
-### План работ:
+## План работ:
 
 - Разработать распределенную топологию Clos-фабрики с двумя подами, соединенных через Firewall.
 - Настроить Underlay: iBGP внутри фабрики, eBGP для соединения между фабриками.
@@ -19,7 +19,7 @@
 - Настроить мультихоминг (EVPN Ethernet Segment) для подключения сервера к двум Leaf одновременно.
 - Провести тестирование связности и отказоустойчивости.
 
-### План работ:
+## Используемые технологии:
 
 - Underlay: iBGP, eBGP, ECMP.
 - Overlay: VXLAN, EVPN, GRE over IPsec.
@@ -28,11 +28,11 @@
 - Межподовое взаимодействие: VRF-to-VRF на FireWall, туннели GRE для изоляции VRF.
 - Платформа: Arista EOS (vEOS-lab).
 
-### Топология сети:
+## Топология сети:
 
 ![proj_scheme.png](proj_scheme.png)
 
-### Адресное пространство:
+## Адресное пространство:
 
 <details>
 <summary> ЦОД 1 </summary>
@@ -132,8 +132,8 @@ FW|tunnel12|172.16.12.2|255.255.255.252
 FW|tunnel13|172.16.13.2|255.255.255.252
 </details>
 
-### Настройки сетевого оборудования:
-# ЦОД 1
+## Настройки сетевого оборудования:
+### ЦОД 1
 <details>
 <summary> Spines </summary>
   
@@ -939,15 +939,753 @@ ip 10.3.1.100 255.255.255.0 10.3.1.254
 ```
 #### Client 3
 ```
-ip 10.4.1.100 255.255.255.0 10.3.1.254
+ip 10.4.1.100 255.255.255.0 10.4.1.254
 ```
 #### Client 4
 ```
-ip 10.5.1.100 255.255.255.0 10.3.1.254
+ip 10.5.1.100 255.255.255.0 10.5.1.254
 ```
 </details>
 
 <details>
+
+### ЦОД 2
+<details>
+<summary> Spines </summary>
+  
+#### Spine 1
+```
+service routing protocols model multi-agent
+!
+no logging console
+!
+hostname Spine1_2
+!
+spanning-tree mode mstp
+!
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 192.168.1.0/31
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 192.168.1.2/31
+!
+interface Ethernet3
+   mtu 9000
+   no switchport
+   ip address 192.168.1.4/31
+!
+interface Ethernet4
+!
+interface Ethernet5
+!
+interface Ethernet6
+!
+interface Ethernet7
+!
+interface Ethernet8
+!
+interface Loopback0
+   ip address 10.1.2.1/32
+!
+interface Management1
+!
+ip routing
+!
+peer-filter LEAF_PF
+   10 match as-range 65002 result accept
+!
+router bgp 65002
+   router-id 10.1.2.1
+   maximum-paths 3 ecmp 3
+   bgp listen range 192.168.1.0/28 peer-group LEAF_NEIGHBOR peer-filter LEAF_PF
+   bgp listen range 10.1.2.0/28 peer-group LEAF_NEIGHBOR_VXLAN peer-filter LEAF_PF
+   neighbor LEAF_NEIGHBOR peer group
+   neighbor LEAF_NEIGHBOR next-hop-self
+   neighbor LEAF_NEIGHBOR out-delay 0
+   neighbor LEAF_NEIGHBOR route-reflector-client
+   neighbor LEAF_NEIGHBOR timers 3 9
+   neighbor LEAF_NEIGHBOR_VXLAN peer group
+   neighbor LEAF_NEIGHBOR_VXLAN update-source Loopback0
+   neighbor LEAF_NEIGHBOR_VXLAN ebgp-multihop 3
+   neighbor LEAF_NEIGHBOR_VXLAN route-reflector-client
+   neighbor LEAF_NEIGHBOR_VXLAN send-community extended
+   !
+   address-family evpn
+      neighbor LEAF_NEIGHBOR_VXLAN activate
+   !
+   address-family ipv4
+      neighbor LEAF_NEIGHBOR activate
+      network 10.1.2.1/32
+!
+end
+
+```
+  
+#### Spine 2
+```
+service routing protocols model multi-agent
+!
+no logging console
+!
+hostname Spine2_2
+!
+spanning-tree mode mstp
+!
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 192.168.2.0/31
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 192.168.2.2/31
+!
+interface Ethernet3
+   mtu 9000
+   no switchport
+   ip address 192.168.2.4/31
+!
+interface Ethernet4
+!
+interface Ethernet5
+!
+interface Ethernet6
+!
+interface Ethernet7
+!
+interface Ethernet8
+!
+interface Loopback0
+   ip address 10.1.2.2/32
+!
+interface Management1
+!
+ip routing
+!
+peer-filter LEAF_PF
+   10 match as-range 65002 result accept
+!
+router bgp 65002
+   router-id 10.1.2.2
+   maximum-paths 3 ecmp 3
+   bgp listen range 192.168.2.0/28 peer-group LEAF_NEIGHBOR peer-filter LEAF_PF
+   bgp listen range 10.1.2.0/28 peer-group LEAF_NEIGHBOR_VXLAN peer-filter LEAF_PF
+   neighbor LEAF_NEIGHBOR peer group
+   neighbor LEAF_NEIGHBOR next-hop-self
+   neighbor LEAF_NEIGHBOR out-delay 0
+   neighbor LEAF_NEIGHBOR route-reflector-client
+   neighbor LEAF_NEIGHBOR timers 3 9
+   neighbor LEAF_NEIGHBOR_VXLAN peer group
+   neighbor LEAF_NEIGHBOR_VXLAN update-source Loopback0
+   neighbor LEAF_NEIGHBOR_VXLAN ebgp-multihop 3
+   neighbor LEAF_NEIGHBOR_VXLAN route-reflector-client
+   neighbor LEAF_NEIGHBOR_VXLAN send-community extended
+   !
+   address-family evpn
+      neighbor LEAF_NEIGHBOR_VXLAN activate
+   !
+   address-family ipv4
+      neighbor LEAF_NEIGHBOR activate
+      network 10.1.2.2/32
+!
+end
+
+```
+</details>
+
+<details>
+<summary> Leafs </summary>
+  
+#### Leaf 1
+```
+service routing protocols model multi-agent
+!
+no logging console
+!
+hostname Leaf1_2
+!
+spanning-tree mode mstp
+!
+vlan 2
+   name SERVERS1
+!
+vlan 3
+   name SERVERS2
+!
+vrf instance CON_VRF1
+!
+vrf instance CON_VRF2
+!
+vrf instance CON_VRF3
+!
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 192.168.1.1/31
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 192.168.2.1/31
+!
+interface Ethernet3
+   mtu 9000
+   switchport access vlan 2
+!
+interface Ethernet4
+   mtu 9000
+   switchport access vlan 3
+!
+interface Ethernet5
+   mtu 9000
+   no switchport
+   vrf CON_VRF1
+   ip address 10.110.2.1/31
+!
+interface Ethernet6
+   mtu 9000
+   no switchport
+   vrf CON_VRF2
+   ip address 10.120.2.1/31
+!
+interface Ethernet7
+   mtu 9000
+   no switchport
+   vrf CON_VRF3
+   ip address 10.130.2.1/31
+!
+interface Ethernet8
+!
+interface Loopback0
+   ip address 10.1.2.11/32
+!
+interface Management1
+!
+interface Vlan2
+   vrf CON_VRF1
+   ip address 10.2.2.201/24
+   ip virtual-router address 10.2.2.254/24
+!
+interface Vlan3
+   vrf CON_VRF1
+   ip address 10.3.2.201/24
+   ip virtual-router address 10.3.2.254/24
+!
+interface Vxlan1
+   vxlan source-interface Loopback0
+   vxlan udp-port 4789
+   vxlan vlan 2 vni 10002
+   vxlan vlan 3 vni 10003
+   vxlan vrf CON_VRF1 vni 10100
+   vxlan vrf CON_VRF2 vni 10200
+   vxlan vrf CON_VRF3 vni 10300
+   vxlan learn-restrict any
+!
+ip virtual-router mac-address 12:00:00:00:00:02
+!
+ip routing
+ip routing vrf CON_VRF1
+ip routing vrf CON_VRF2
+ip routing vrf CON_VRF3
+!
+ip prefix-list TYPE2_ROUTE
+   seq 10 permit 0.0.0.0/0 ge 32
+!
+ip route vrf CON_VRF1 0.0.0.0/0 10.110.2.0
+ip route vrf CON_VRF2 0.0.0.0/0 10.120.2.0
+ip route vrf CON_VRF3 0.0.0.0/0 10.130.2.0
+!
+route-map FW_ROUTES deny 10
+   match ip address prefix-list TYPE2_ROUTE
+!
+route-map FW_ROUTES permit 20
+!
+router bgp 65002
+   router-id 10.1.2.11
+   maximum-paths 2 ecmp 2
+   neighbor FW peer group
+   neighbor FW remote-as 65002
+   neighbor FW allowas-in 3
+   neighbor FW timers 3 9
+   neighbor FW route-map FW_ROUTES out
+   neighbor SPINE_NEIGHBOR peer group
+   neighbor SPINE_NEIGHBOR remote-as 65002
+   neighbor SPINE_NEIGHBOR out-delay 0
+   neighbor SPINE_NEIGHBOR timers 3 9
+   neighbor SPINE_NEIGHBOR_VXLAN peer group
+   neighbor SPINE_NEIGHBOR_VXLAN remote-as 65002
+   neighbor SPINE_NEIGHBOR_VXLAN update-source Loopback0
+   neighbor SPINE_NEIGHBOR_VXLAN ebgp-multihop 3
+   neighbor SPINE_NEIGHBOR_VXLAN send-community extended
+   neighbor 10.1.2.1 peer group SPINE_NEIGHBOR_VXLAN
+   neighbor 10.1.2.2 peer group SPINE_NEIGHBOR_VXLAN
+   neighbor 192.168.1.0 peer group SPINE_NEIGHBOR
+   neighbor 192.168.2.0 peer group SPINE_NEIGHBOR
+   !
+   vlan 2
+      rd auto
+      route-target both 2:10002
+      redistribute learned
+   !
+   vlan 3
+      rd auto
+      route-target both 3:10003
+      redistribute learned
+   !
+   address-family evpn
+      neighbor SPINE_NEIGHBOR_VXLAN activate
+   !
+   address-family ipv4
+      neighbor FW activate
+      neighbor SPINE_NEIGHBOR activate
+      network 10.1.2.11/32
+   !
+   vrf CON_VRF1
+      rd 10.1.2.11:100
+      route-target import evpn 100:10100
+      route-target export evpn 100:10100
+      router-id 10.1.2.11
+      neighbor 10.110.2.0 peer group FW
+      neighbor 10.110.2.0 route-reflector-client
+      !
+      address-family ipv4
+         neighbor 10.110.2.0 activate
+         redistribute connected
+         redistribute static
+   !
+   vrf CON_VRF2
+      rd 10.1.2.11:200
+      route-target import evpn 200:10200
+      route-target export evpn 200:10200
+      router-id 10.1.2.11
+      neighbor 10.120.2.0 peer group FW
+      neighbor 10.120.2.0 route-reflector-client
+      !
+      address-family ipv4
+         neighbor 10.120.2.0 activate
+         redistribute connected
+         redistribute static
+   !
+   vrf CON_VRF3
+      rd 10.1.2.11:300
+      route-target import evpn 300:10300
+      route-target export evpn 300:10300
+      router-id 10.1.2.11
+      neighbor 10.130.2.0 peer group FW
+      neighbor 10.130.2.0 route-reflector-client
+      !
+      address-family ipv4
+         neighbor 10.130.2.0 activate
+         redistribute connected
+         redistribute static
+!
+end
+
+
+```
+
+#### Leaf 2
+```
+service routing protocols model multi-agent
+!
+no logging console
+!
+hostname Leaf2_2
+!
+spanning-tree mode mstp
+!
+vlan 4
+   name SERVERS_DMZ
+!
+vrf instance CON_VRF2
+!
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 192.168.1.3/31
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 192.168.2.3/31
+!
+interface Ethernet3
+   mtu 9000
+   switchport access vlan 4
+!
+interface Ethernet4
+   mtu 9000
+   switchport access vlan 4
+!
+interface Ethernet5
+!
+interface Ethernet6
+!
+interface Ethernet7
+!
+interface Ethernet8
+!
+interface Loopback0
+   ip address 10.1.2.12/32
+!
+interface Management1
+!
+interface Vlan4
+   vrf CON_VRF2
+   ip address 10.4.2.202/24
+   ip virtual-router address 10.4.2.254/24
+!
+interface Vxlan1
+   vxlan source-interface Loopback0
+   vxlan udp-port 4789
+   vxlan vlan 4 vni 10004
+   vxlan vrf CON_VRF2 vni 10200
+   vxlan learn-restrict any
+!
+ip virtual-router mac-address 12:00:00:00:00:02
+!
+ip routing
+ip routing vrf CON_VRF2
+!
+router bgp 65002
+   router-id 10.1.2.12
+   maximum-paths 2 ecmp 2
+   neighbor SPINE_NEIGHBOR peer group
+   neighbor SPINE_NEIGHBOR remote-as 65002
+   neighbor SPINE_NEIGHBOR out-delay 0
+   neighbor SPINE_NEIGHBOR bfd
+   neighbor SPINE_NEIGHBOR timers 3 9
+   neighbor SPINE_NEIGHBOR_VXLAN peer group
+   neighbor SPINE_NEIGHBOR_VXLAN remote-as 65002
+   neighbor SPINE_NEIGHBOR_VXLAN update-source Loopback0
+   neighbor SPINE_NEIGHBOR_VXLAN ebgp-multihop 3
+   neighbor SPINE_NEIGHBOR_VXLAN send-community extended
+   neighbor 10.1.2.1 peer group SPINE_NEIGHBOR_VXLAN
+   neighbor 10.1.2.2 peer group SPINE_NEIGHBOR_VXLAN
+   neighbor 192.168.1.2 peer group SPINE_NEIGHBOR
+   neighbor 192.168.2.2 peer group SPINE_NEIGHBOR
+   !
+   vlan 4
+      rd auto
+      route-target both 4:10004
+      redistribute learned
+   !
+   address-family evpn
+      neighbor SPINE_NEIGHBOR_VXLAN activate
+   !
+   address-family ipv4
+      neighbor SPINE_NEIGHBOR activate
+      network 10.1.2.12/32
+   !
+   vrf CON_VRF2
+      rd 10.1.2.12:200
+      route-target import evpn 200:10200
+      route-target export evpn 200:10200
+      router-id 10.1.2.12
+      !
+      address-family ipv4
+         redistribute connected
+!
+end
+
+```
+
+#### Leaf 3
+```
+service routing protocols model multi-agent
+!
+no logging console
+!
+hostname Leaf3_2
+!
+spanning-tree mode mstp
+!
+vlan 5
+   name SERVERS_OUT
+!
+vrf instance CON_VRF3
+!
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 192.168.1.5/31
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 192.168.2.5/31
+!
+interface Ethernet3
+   mtu 9000
+   switchport access vlan 5
+!
+interface Ethernet4
+!
+interface Ethernet5
+!
+interface Ethernet6
+!
+interface Ethernet7
+!
+interface Ethernet8
+!
+interface Loopback0
+   ip address 10.1.2.13/32
+!
+interface Management1
+!
+interface Vlan5
+   vrf CON_VRF3
+   ip address 10.5.2.203/24
+   ip virtual-router address 10.5.2.254/24
+!
+interface Vxlan1
+   vxlan source-interface Loopback0
+   vxlan udp-port 4789
+   vxlan vlan 5 vni 10005
+   vxlan vrf CON_VRF3 vni 10300
+   vxlan learn-restrict any
+!
+ip virtual-router mac-address 12:00:00:00:00:02
+!
+ip routing
+ip routing vrf CON_VRF3
+!
+router bgp 65002
+   router-id 10.1.2.13
+   maximum-paths 2 ecmp 2
+   neighbor SPINE_NEIGHBOR peer group
+   neighbor SPINE_NEIGHBOR remote-as 65002
+   neighbor SPINE_NEIGHBOR out-delay 0
+   neighbor SPINE_NEIGHBOR timers 3 9
+   neighbor SPINE_NEIGHBOR_VXLAN peer group
+   neighbor SPINE_NEIGHBOR_VXLAN remote-as 65002
+   neighbor SPINE_NEIGHBOR_VXLAN update-source Loopback0
+   neighbor SPINE_NEIGHBOR_VXLAN ebgp-multihop 3
+   neighbor SPINE_NEIGHBOR_VXLAN send-community extended
+   neighbor 10.1.2.1 peer group SPINE_NEIGHBOR_VXLAN
+   neighbor 10.1.2.2 peer group SPINE_NEIGHBOR_VXLAN
+   neighbor 192.168.1.4 peer group SPINE_NEIGHBOR
+   neighbor 192.168.2.4 peer group SPINE_NEIGHBOR
+   !
+   vlan 5
+      rd auto
+      route-target both 5:10005
+      redistribute learned
+   !
+   address-family evpn
+      neighbor SPINE_NEIGHBOR_VXLAN activate
+   !
+   address-family ipv4
+      neighbor SPINE_NEIGHBOR activate
+      network 10.1.2.13/32
+   !
+   vrf CON_VRF3
+      rd 10.1.2.13:300
+      route-target import evpn 300:10300
+      route-target export evpn 300:10300
+      router-id 10.1.2.13
+      !
+      address-family ipv4
+         redistribute connected
+!
+end
+
+```
+</details>
+
+<details>
+<summary> Firewall </summary>
+  
+#### FW
+```
+service routing protocols model multi-agent
+!
+no logging console
+!
+hostname FW-1_2
+!
+spanning-tree mode mstp
+!
+vrf instance CON_VRF1
+!
+vrf instance CON_VRF2
+!
+vrf instance CON_VRF3
+!
+ip security
+   ike policy ike-vxlan
+      encryption aes256
+      dh-group 24
+   !
+   sa policy sa-vxlan
+      sa lifetime 2 hours
+      pfs dh-group 14
+   !
+   profile vxlan
+      ike-policy ike-vxlan
+      sa-policy sa-vxlan
+      shared-key 7 053D3E232042
+      dpd 10 50 clear
+      mode transport
+!
+interface Ethernet1
+   description OUTSIDE
+   no switchport
+   ip address 203.0.113.2/30
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   vrf CON_VRF1
+   ip address 10.110.2.0/31
+!
+interface Ethernet3
+   mtu 9000
+   no switchport
+   vrf CON_VRF2
+   ip address 10.120.2.0/31
+!
+interface Ethernet4
+   mtu 9000
+   no switchport
+   vrf CON_VRF3
+   ip address 10.130.2.0/31
+!
+interface Ethernet5
+!
+interface Ethernet6
+!
+interface Ethernet7
+!
+interface Ethernet8
+!
+interface Loopback0
+   ip address 10.1.2.100/32
+!
+interface Management1
+!
+interface Tunnel11
+   mtu 1376
+   vrf CON_VRF1
+   ip address 172.16.11.2/30
+   tunnel mode gre
+   tunnel source 203.0.113.2
+   tunnel destination 203.0.113.1
+   tunnel key 11
+!
+interface Tunnel12
+   mtu 1376
+   vrf CON_VRF2
+   ip address 172.16.12.2/30
+   tunnel mode gre
+   tunnel source 203.0.113.2
+   tunnel destination 203.0.113.1
+   tunnel key 12
+!
+interface Tunnel13
+   mtu 1376
+   vrf CON_VRF3
+   ip address 172.16.13.2/30
+   no mpls ip
+   tunnel mode gre
+   tunnel source 203.0.113.2
+   tunnel destination 203.0.113.1
+   tunnel key 13
+!
+ip access-list DMZ_TO_TRUSTED
+   10 permit tcp 10.4.0.0/16 10.2.0.0/16 established
+   20 permit tcp 10.4.0.0/16 10.3.0.0/16 established
+   30 permit icmp 10.4.0.0/16 10.2.0.0/16 echo-reply
+   40 permit icmp 10.4.0.0/16 10.3.0.0/16 echo-reply
+   50 deny ip any any
+!
+ip routing
+ip routing vrf CON_VRF1
+ip routing vrf CON_VRF2
+ip routing vrf CON_VRF3
+!
+ip route vrf CON_VRF1 10.4.1.0/24 egress-vrf CON_VRF2 10.120.2.1
+ip route vrf CON_VRF1 10.4.2.0/24 egress-vrf CON_VRF2 10.120.2.1
+ip route vrf CON_VRF2 10.2.1.0/24 egress-vrf CON_VRF1 10.110.2.1
+ip route vrf CON_VRF2 10.2.2.0/24 egress-vrf CON_VRF1 10.110.2.1
+ip route vrf CON_VRF2 10.3.1.0/24 egress-vrf CON_VRF1 10.110.2.1
+ip route vrf CON_VRF2 10.3.2.0/24 egress-vrf CON_VRF1 10.110.2.1
+!
+mpls ip
+!
+router bgp 65002
+   router-id 10.1.2.100
+   neighbor FABRIC peer group
+   neighbor FABRIC remote-as 65002
+   neighbor FABRIC next-hop-self
+   neighbor FABRIC allowas-in 3
+   neighbor FABRIC timers 3 9
+   !
+   vrf CON_VRF1
+      neighbor 10.110.2.1 peer group FABRIC
+      neighbor 172.16.11.1 remote-as 65001
+      neighbor 172.16.11.1 timers 3 9
+      !
+      address-family ipv4
+         neighbor 10.110.2.1 activate
+         neighbor 172.16.11.1 activate
+         redistribute connected
+   !
+   vrf CON_VRF2
+      neighbor 10.120.2.1 peer group FABRIC
+      neighbor 172.16.12.1 remote-as 65001
+      neighbor 172.16.12.1 timers 3 9
+      !
+      address-family ipv4
+         neighbor 10.120.2.1 activate
+         neighbor 172.16.12.1 activate
+         redistribute connected
+   !
+   vrf CON_VRF3
+      neighbor 10.130.2.1 peer group FABRIC
+      neighbor 172.16.13.1 remote-as 65001
+      neighbor 172.16.13.1 timers 3 9
+      !
+      address-family ipv4
+         neighbor 10.130.2.1 activate
+         neighbor 172.16.13.1 activate
+         redistribute connected
+!
+end
+
+
+```
+</details>
+
+<details>
+<summary> Clients </summary>
+  
+#### Client 1
+```
+ip 10.2.1.100 255.255.255.0 10.2.1.254
+```
+#### Client 2
+```
+ip 10.3.1.100 255.255.255.0 10.3.1.254
+```
+#### Client 3
+```
+ip 10.4.1.100 255.255.255.0 10.4.1.254
+```
+#### Client 4
+```
+ip 10.5.1.100 255.255.255.0 10.5.1.254
+```
+</details>
+
+<details>
+
 
 <summary> Общая информация </summary>
 
