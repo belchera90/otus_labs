@@ -1576,6 +1576,7 @@ interface Tunnel11
    tunnel source 203.0.113.2
    tunnel destination 203.0.113.1
    tunnel key 11
+   tunnel ipsec vxlan
 !
 interface Tunnel12
    mtu 1376
@@ -1585,6 +1586,7 @@ interface Tunnel12
    tunnel source 203.0.113.2
    tunnel destination 203.0.113.1
    tunnel key 12
+   tunnel ipsec vxlan
 !
 interface Tunnel13
    mtu 1376
@@ -1595,6 +1597,7 @@ interface Tunnel13
    tunnel source 203.0.113.2
    tunnel destination 203.0.113.1
    tunnel key 13
+   tunnel ipsec vxlan
 !
 ip access-list DMZ_TO_TRUSTED
    10 permit tcp 10.4.0.0/16 10.2.0.0/16 established
@@ -1682,8 +1685,6 @@ ip 10.5.1.100 255.255.255.0 10.5.1.254
 ```
 </details>
 
-<details>
-
 
 ## Пояснения к работе:
 
@@ -1695,361 +1696,39 @@ ip 10.5.1.100 255.255.255.0 10.5.1.254
 
 ## Проверка работоспособности:
 
- Пробуем с Client1 "достучаться" до Client2(VLA20), Client3(VLA30) и до Client4(VLAN40):
- #### Clients
- ![pingl2cl1.png](ping8.png)
+Проверка BGP сессий на spain:
+ЦОД 1
+ ![sp1_1.png](images/sp1_1.png)
+ЦОД 2
+ ![sp1_2.png](images/sp1_2.png)
 
- Как видим Client1 видит Client3, а так же Client2 и Client4, с которыми имеет связь через файервол.
-
-
-
+Проверка routes-2 и протокола ECMP на одном из leaf:
+ЦОД 1
+ ![r2_1.png](images/r2_1.png)
+ЦОД 2
+ ![r2_2.png](images/r2_2.png)
  
- Теперь посмотрим EVPN маршруты типа 5 на каждом leaf-коммутаторе:
- 
- <details>
- <summary> Type 5 </summary>
- 
+Проверка routes-3 на одном из leaf:
+ЦОД 1
+ ![r3_1.png](images/r3_1.png)
+ЦОД 2
+ ![r3_2.png](images/r3_2.png)
 
- #### Leaf 1
- ```
+Проверка routes-5 на leaf1. Как видно, все маршруты приходят:
+ЦОД 1
+ ![r5_1.png](images/r5_1.png)
+ЦОД 2
+ ![r5_2.png](images/r5_2.png)
 
-Leaf1#sh bgp evpn route-type ip-prefix ?
-  A.B.C.D/E          IPv4 address prefix
-  A:B:C:D:E:F:G:H/I  IPv6 address prefix
-  ipv4               Limit address family to IPv4
-  ipv6               Limit address family to IPv6
+ Проверка multihoming. Как видно routes-4 корректны и трассирвка после "падения" линка меняется
+  ![r4_1.png](images/r4_1.png)
+  
+  ![tracert.png](images/tracert.png)
 
-Leaf1#sh bgp evpn route-type ip-prefix ipv4
-BGP routing table information for VRF default
-Router identifier 10.1.1.1, local AS number 65001
-Route status codes: * - valid, > - active, S - Stale, E - ECMP head, e - ECMP
-                    c - Contributing to ECMP, % - Pending BGP convergence
-Origin codes: i - IGP, e - EGP, ? - incomplete
-AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Link Local Nexthop
-
-          Network                Next Hop              Metric  LocPref Weight  Path
- * >Ec    RD: 10.1.3.1:100 ip-prefix 0.0.0.0/0
-                                 10.1.3.1              -       100     0       65000 65003 65500 ?
- *  ec    RD: 10.1.3.1:100 ip-prefix 0.0.0.0/0
-                                 10.1.3.1              -       100     0       65000 65003 65500 ?
- * >Ec    RD: 10.1.3.1:200 ip-prefix 0.0.0.0/0
-                                 10.1.3.1              -       100     0       65000 65003 65500 ?
- *  ec    RD: 10.1.3.1:200 ip-prefix 0.0.0.0/0
-                                 10.1.3.1              -       100     0       65000 65003 65500 ?
- * >Ec    RD: 10.1.3.1:100 ip-prefix 10.100.1.0/30
-                                 10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:100 ip-prefix 10.100.1.0/30
-                                 10.1.3.1              -       100     0       65000 65003 i
- * >Ec    RD: 10.1.3.1:200 ip-prefix 10.100.1.0/30
-                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
- *  ec    RD: 10.1.3.1:200 ip-prefix 10.100.1.0/30
-                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
- * >Ec    RD: 10.1.3.1:100 ip-prefix 10.200.1.0/30
-                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
- *  ec    RD: 10.1.3.1:100 ip-prefix 10.200.1.0/30
-                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
- * >Ec    RD: 10.1.3.1:200 ip-prefix 10.200.1.0/30
-                                 10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:200 ip-prefix 10.200.1.0/30
-                                 10.1.3.1              -       100     0       65000 65003 i
- * >      RD: 10.1.1.1:100 ip-prefix 192.168.10.0/24
-                                 -                     -       -       0       i
- * >Ec    RD: 10.1.2.1:200 ip-prefix 192.168.20.0/24
-                                 10.1.2.1              -       100     0       65000 65002 i
- *  ec    RD: 10.1.2.1:200 ip-prefix 192.168.20.0/24
-                                 10.1.2.1              -       100     0       65000 65002 i
- * >Ec    RD: 10.1.3.1:100 ip-prefix 192.168.30.0/24
-                                 10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:100 ip-prefix 192.168.30.0/24
-                                 10.1.3.1              -       100     0       65000 65003 i
- * >Ec    RD: 10.1.3.1:200 ip-prefix 192.168.30.0/24
-                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
- *  ec    RD: 10.1.3.1:200 ip-prefix 192.168.30.0/24
-                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
- * >Ec    RD: 10.1.3.1:100 ip-prefix 192.168.40.0/24
-                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
- *  ec    RD: 10.1.3.1:100 ip-prefix 192.168.40.0/24
-                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
- * >Ec    RD: 10.1.3.1:200 ip-prefix 192.168.40.0/24
-                                 10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:200 ip-prefix 192.168.40.0/24
-                                 10.1.3.1              -       100     0       65000 65003 i
-
- ```
-
- #### Leaf 2
- ```
-
-Leaf2#sh bgp evpn route-type ip-prefix ipv4
-BGP routing table information for VRF default
-Router identifier 10.1.2.1, local AS number 65002
-Route status codes: * - valid, > - active, S - Stale, E - ECMP head, e - ECMP
-                    c - Contributing to ECMP, % - Pending BGP convergence
-Origin codes: i - IGP, e - EGP, ? - incomplete
-AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Link Local Nexthop
-
-          Network                Next Hop              Metric  LocPref Weight  Path
- * >Ec    RD: 10.1.3.1:100 ip-prefix 0.0.0.0/0
-                                 10.1.3.1              -       100     0       65000 65003 65500 ?
- *  ec    RD: 10.1.3.1:100 ip-prefix 0.0.0.0/0
-                                 10.1.3.1              -       100     0       65000 65003 65500 ?
- * >Ec    RD: 10.1.3.1:200 ip-prefix 0.0.0.0/0
-                                 10.1.3.1              -       100     0       65000 65003 65500 ?
- *  ec    RD: 10.1.3.1:200 ip-prefix 0.0.0.0/0
-                                 10.1.3.1              -       100     0       65000 65003 65500 ?
- * >Ec    RD: 10.1.3.1:100 ip-prefix 10.100.1.0/30
-                                 10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:100 ip-prefix 10.100.1.0/30
-                                 10.1.3.1              -       100     0       65000 65003 i
- * >Ec    RD: 10.1.3.1:200 ip-prefix 10.100.1.0/30
-                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
- *  ec    RD: 10.1.3.1:200 ip-prefix 10.100.1.0/30
-                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
- * >Ec    RD: 10.1.3.1:100 ip-prefix 10.200.1.0/30
-                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
- *  ec    RD: 10.1.3.1:100 ip-prefix 10.200.1.0/30
-                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
- * >Ec    RD: 10.1.3.1:200 ip-prefix 10.200.1.0/30
-                                 10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:200 ip-prefix 10.200.1.0/30
-                                 10.1.3.1              -       100     0       65000 65003 i
- * >Ec    RD: 10.1.1.1:100 ip-prefix 192.168.10.0/24
-                                 10.1.1.1              -       100     0       65000 65001 i
- *  ec    RD: 10.1.1.1:100 ip-prefix 192.168.10.0/24
-                                 10.1.1.1              -       100     0       65000 65001 i
- * >      RD: 10.1.2.1:200 ip-prefix 192.168.20.0/24
-                                 -                     -       -       0       i
- * >Ec    RD: 10.1.3.1:100 ip-prefix 192.168.30.0/24
-                                 10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:100 ip-prefix 192.168.30.0/24
-                                 10.1.3.1              -       100     0       65000 65003 i
- * >Ec    RD: 10.1.3.1:200 ip-prefix 192.168.30.0/24
-                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
- *  ec    RD: 10.1.3.1:200 ip-prefix 192.168.30.0/24
-                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
- * >Ec    RD: 10.1.3.1:100 ip-prefix 192.168.40.0/24
-                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
- *  ec    RD: 10.1.3.1:100 ip-prefix 192.168.40.0/24
-                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
- * >Ec    RD: 10.1.3.1:200 ip-prefix 192.168.40.0/24
-                                 10.1.3.1              -       100     0       65000 65003 i
- *  ec    RD: 10.1.3.1:200 ip-prefix 192.168.40.0/24
-                                 10.1.3.1              -       100     0       65000 65003 i
-
-   
- ```
-
- #### Leaf 3
- ```
-
-Leaf3#sh bgp evpn route-type ip-prefix ipv4
-BGP routing table information for VRF default
-Router identifier 10.1.3.1, local AS number 65003
-Route status codes: * - valid, > - active, S - Stale, E - ECMP head, e - ECMP
-                    c - Contributing to ECMP, % - Pending BGP convergence
-Origin codes: i - IGP, e - EGP, ? - incomplete
-AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Link Local Nexthop
-
-          Network                Next Hop              Metric  LocPref Weight  Path
- * >      RD: 10.1.3.1:100 ip-prefix 0.0.0.0/0
-                                 -                     -       100     0       65500 ?
- * >      RD: 10.1.3.1:200 ip-prefix 0.0.0.0/0
-                                 -                     -       100     0       65500 ?
- * >      RD: 10.1.3.1:100 ip-prefix 10.100.1.0/30
-                                 -                     -       -       0       i
- * >      RD: 10.1.3.1:200 ip-prefix 10.100.1.0/30
-                                 -                     -       100     0       65500 65003 i
- * >      RD: 10.1.3.1:100 ip-prefix 10.200.1.0/30
-                                 -                     -       100     0       65500 65003 i
- * >      RD: 10.1.3.1:200 ip-prefix 10.200.1.0/30
-                                 -                     -       -       0       i
- * >Ec    RD: 10.1.1.1:100 ip-prefix 192.168.10.0/24
-                                 10.1.1.1              -       100     0       65000 65001 i
- *  ec    RD: 10.1.1.1:100 ip-prefix 192.168.10.0/24
-                                 10.1.1.1              -       100     0       65000 65001 i
- * >      RD: 10.1.3.1:200 ip-prefix 192.168.10.0/24
-                                 -                     -       100     0       65500 65003 65000 65001 i
- * >Ec    RD: 10.1.2.1:200 ip-prefix 192.168.20.0/24
-                                 10.1.2.1              -       100     0       65000 65002 i
- *  ec    RD: 10.1.2.1:200 ip-prefix 192.168.20.0/24
-                                 10.1.2.1              -       100     0       65000 65002 i
- * >      RD: 10.1.3.1:100 ip-prefix 192.168.20.0/24
-                                 -                     -       100     0       65500 65003 65000 65002 i
- * >      RD: 10.1.3.1:100 ip-prefix 192.168.30.0/24
-                                 -                     -       -       0       i
- * >      RD: 10.1.3.1:200 ip-prefix 192.168.30.0/24
-                                 -                     -       100     0       65500 65003 i
- * >      RD: 10.1.3.1:100 ip-prefix 192.168.40.0/24
-                                 -                     -       100     0       65500 65003 i
- * >      RD: 10.1.3.1:200 ip-prefix 192.168.40.0/24
-                                 -                     -       -       0       i
-
-   
- ```
-
-</details>
-Как видим, присутствуют анонсы всех клиентских сетей, так же используется протокол ECMP. Так же видно, что всем устройствам прилетел маршрут по умолчанию(по два на кажды VRF с транзитным VNI, так как маршрутизация идёт через каждый из спайнов).</br>
-</br>
-
-Проверим сессию BGP и маршрутную информацию FW:
-
- #### FW
- ```
-FW#sh bgp summary
-BGP summary information for VRF default
-Router identifier 10.10.1.1, local AS number 65500
-Neighbor            AS Session State AFI/SAFI                AFI/SAFI State   NLRI Rcd   NLRI Acc
----------- ----------- ------------- ----------------------- -------------- ---------- ----------
-10.100.1.2       65003 Established   IPv4 Unicast            Negotiated              3          3
-10.200.1.2       65003 Established   IPv4 Unicast            Negotiated              3          3
-
-FW#sh ip route
-
-VRF: default
-Codes: C - connected, S - static, K - kernel,
-       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
-       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
-       N2 - OSPF NSSA external type2, B - Other BGP Routes,
-       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
-       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
-       A O - OSPF Summary, NG - Nexthop Group Static Route,
-       V - VXLAN Control Service, M - Martian,
-       DH - DHCP client installed default route,
-       DP - Dynamic Policy Route, L - VRF Leaked,
-       G  - gRIBI, RC - Route Cache Route
-
-Gateway of last resort is not set
-
- C        10.10.1.1/32 is directly connected, Loopback0
- C        10.100.1.0/30 is directly connected, Ethernet1
- C        10.200.1.0/30 is directly connected, Ethernet2
- B E      192.168.10.0/24 [200/0] via 10.100.1.2, Ethernet1
- B E      192.168.20.0/24 [200/0] via 10.200.1.2, Ethernet2
- B E      192.168.30.0/24 [200/0] via 10.100.1.2, Ethernet1
- B E      192.168.40.0/24 [200/0] via 10.200.1.2, Ethernet2
-
- ```
-
-Как видим, на файервол "прилетели" все RT-5 маршруты, а маршрутов второго типа нет, так как они были отфильтрованы на Leaf 3.</br>
-</br>
-
-Так же посмотрим маршруты в транзитных VRF на всех Leaf фабрики:
-
- #### Leaf 1
- ```
-Leaf1#show ip route vrf CON_VRF1
-
-VRF: CON_VRF1
-Codes: C - connected, S - static, K - kernel,
-       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
-       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
-       N2 - OSPF NSSA external type2, B - Other BGP Routes,
-       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
-       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
-       A O - OSPF Summary, NG - Nexthop Group Static Route,
-       V - VXLAN Control Service, M - Martian,
-       DH - DHCP client installed default route,
-       DP - Dynamic Policy Route, L - VRF Leaked,
-       G  - gRIBI, RC - Route Cache Route
-
-Gateway of last resort:
- B E      0.0.0.0/0 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
-
- B E      10.100.1.0/30 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
- B E      10.200.1.0/30 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
- C        192.168.10.0/24 is directly connected, Vlan10
- B E      192.168.30.103/32 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
- B E      192.168.30.0/24 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
- B E      192.168.40.0/24 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
-
- ```
-
-#### Leaf 2
- ```
-Leaf2#show ip route vrf CON_VRF2
-
-VRF: CON_VRF2
-Codes: C - connected, S - static, K - kernel,
-       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
-       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
-       N2 - OSPF NSSA external type2, B - Other BGP Routes,
-       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
-       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
-       A O - OSPF Summary, NG - Nexthop Group Static Route,
-       V - VXLAN Control Service, M - Martian,
-       DH - DHCP client installed default route,
-       DP - Dynamic Policy Route, L - VRF Leaked,
-       G  - gRIBI, RC - Route Cache Route
-
-Gateway of last resort:
- B E      0.0.0.0/0 [200/0] via VTEP 10.1.3.1 VNI 10200 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
-
- B E      10.100.1.0/30 [200/0] via VTEP 10.1.3.1 VNI 10200 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
- B E      10.200.1.0/30 [200/0] via VTEP 10.1.3.1 VNI 10200 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
- C        192.168.20.0/24 is directly connected, Vlan20
- B E      192.168.30.0/24 [200/0] via VTEP 10.1.3.1 VNI 10200 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
- B E      192.168.40.104/32 [200/0] via VTEP 10.1.3.1 VNI 10200 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
- B E      192.168.40.0/24 [200/0] via VTEP 10.1.3.1 VNI 10200 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
-
-
-```
-
- #### Leaf 3
- ```
-Leaf3#show ip route vrf CON_VRF1
-
-VRF: CON_VRF1
-Codes: C - connected, S - static, K - kernel,
-       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
-       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
-       N2 - OSPF NSSA external type2, B - Other BGP Routes,
-       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
-       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
-       A O - OSPF Summary, NG - Nexthop Group Static Route,
-       V - VXLAN Control Service, M - Martian,
-       DH - DHCP client installed default route,
-       DP - Dynamic Policy Route, L - VRF Leaked,
-       G  - gRIBI, RC - Route Cache Route
-
-Gateway of last resort:
- B E      0.0.0.0/0 [200/0] via 10.100.1.1, Ethernet5
-
- C        10.100.1.0/30 is directly connected, Ethernet5
- B E      10.200.1.0/30 [200/0] via 10.100.1.1, Ethernet5
- B E      192.168.10.101/32 [200/0] via VTEP 10.1.1.1 VNI 10100 router-mac 50:00:00:d7:ee:0b local-interface Vxlan1
- B E      192.168.10.0/24 [200/0] via VTEP 10.1.1.1 VNI 10100 router-mac 50:00:00:d7:ee:0b local-interface Vxlan1
- B E      192.168.20.0/24 [200/0] via 10.100.1.1, Ethernet5
- C        192.168.30.0/24 is directly connected, Vlan30
- B E      192.168.40.0/24 [200/0] via 10.100.1.1, Ethernet5
-
-Leaf3#show ip route vrf CON_VRF2
-
-VRF: CON_VRF2
-Codes: C - connected, S - static, K - kernel,
-       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
-       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
-       N2 - OSPF NSSA external type2, B - Other BGP Routes,
-       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
-       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
-       A O - OSPF Summary, NG - Nexthop Group Static Route,
-       V - VXLAN Control Service, M - Martian,
-       DH - DHCP client installed default route,
-       DP - Dynamic Policy Route, L - VRF Leaked,
-       G  - gRIBI, RC - Route Cache Route
-
-Gateway of last resort:
- B E      0.0.0.0/0 [200/0] via 10.200.1.1, Ethernet6
-
- B E      10.100.1.0/30 [200/0] via 10.200.1.1, Ethernet6
- C        10.200.1.0/30 is directly connected, Ethernet6
- B E      192.168.10.0/24 [200/0] via 10.200.1.1, Ethernet6
- B E      192.168.20.102/32 [200/0] via VTEP 10.1.2.1 VNI 10200 router-mac 50:00:00:d5:5d:c0 local-interface Vxlan1
- B E      192.168.20.0/24 [200/0] via VTEP 10.1.2.1 VNI 10200 router-mac 50:00:00:d5:5d:c0 local-interface Vxlan1
- B E      192.168.30.0/24 [200/0] via 10.200.1.1, Ethernet6
- C        192.168.40.0/24 is directly connected, Vlan40
-
- ```
- Видно, что везде присутствует маршрут по умолчанию, анонсятся маршруты пятого типа, а так же неотфильтрованные хостовые маршруты второго типа.
+ Проверка связности между клиентами разных тенантов разных ЦОДов. Как видно, клиент CON_VRF1 видит клиентов CON_VRF1 и CON_VRF2, но не видит клиентов CON_VRF3. Клиент CON_VRF3 одного ЦОД види клиента CON_VRF3 второго ЦОД:
+ ![ping_cl1_suc.png](images/ping_cl1_suc.png)
+ ![ping_cl1_den.png](images/ping_cl1_den.png)
+ ![ping_cl4.png](images/ping_cl4.png)
 
 </br>
  
