@@ -1,1 +1,1404 @@
+Проектирование распределенной L3 сети ЦОД с применением технологии multisite с применением GRE\IPSEC туннеля без внедрения L2
+=====================================
 
+### Цель: 
+
+- Разработать масштабируемую архитектуру распределенной сети ЦОД
+- Реализовать отказоустойчивый underlay с применением защищенного туннеля для траффика проходящего через сеть ИНтернет
+- Обеспечить мультитенантность и изоляцию клиентских сегментов
+- Реализовать мультихоминг (EVPN Ethernet Segment) для одного из серверов
+- Организовать контролируемое взаимодействие между ЦОДами
+- Подтвердить работоспособность и отказоустойчивость спроектированного решения
+
+### План работ:
+
+- Разработать распределенную топологию Clos-фабрики с двумя подами, соединенных через Firewall.
+- Настроить Underlay: iBGP внутри фабрики, eBGP для соединения между фабриками.
+- Реализовать Overlay: EVPN с VXLAN инкапсуляцией, распределённый anycast gateway L3VNI для мультитенантности, GRE over IPsec для соединения между фабриками.
+- Организовать межподовое взаимодействие через Firewall с применением route leaking и access list для расграничения доступа.
+- Настроить мультихоминг (EVPN Ethernet Segment) для подключения сервера к двум Leaf одновременно.
+- Провести тестирование связности и отказоустойчивости.
+
+### План работ:
+
+- Underlay: iBGP, eBGP, ECMP.
+- Overlay: VXLAN, EVPN, GRE over IPsec.
+- Мультитенантность: VRF (CON_VRF1, CON_VRF2, CON_VRF3), Route Distinguisher, Route Target.
+- Мультихоминг: EVPN Ethernet Segment (ESI), LACP.
+- Межподовое взаимодействие: VRF-to-VRF на FireWall, туннели GRE для изоляции VRF.
+- Платформа: Arista EOS (vEOS-lab).
+
+### Топология сети
+
+![proj_scheme.png](proj_scheme.png)
+
+### Таблица адресов
+
+Fabric1
+|Device|Interface|IP Address|Subnet Mask
+|---|---|---|---|
+Spine1|lo1|10.1.1.1|255.255.255.255
+Spine1|eth1|192.168.1.0|255.255.255.254
+Spine1|eth2|192.168.1.2|255.255.255.254
+Spine1|eth3|192.168.1.4|255.255.255.254
+Spine2|lo1|10.1.1.2|255.255.255.255
+Spine2|eth1|192.168.2.0|255.255.255.254
+Spine2|eth2|192.168.2.2|255.255.255.254
+Spine2|eth3|192.168.2.4|255.255.255.254
+Leaf1|lo1|10.1.1.11|255.255.255.255
+Leaf1|eth1|192.168.1.1|255.255.255.254
+Leaf1|eth2|192.168.2.1|255.255.255.254
+Leaf1|vlan2|10.2.1.201|255.255.255.0
+Leaf1|vlan2_any|10.2.1.254|255.255.255.0
+Leaf1|vlan3|10.3.1.201|255.255.255.0
+Leaf1|vlan3_any|10.3.1.254|255.255.255.0
+Leaf2|lo1|10.1.1.12|255.255.255.255
+Leaf2|eth1|192.168.1.3|255.255.255.254
+Leaf2|eth2|192.168.2.3|255.255.255.254
+Leaf2|vlan2|10.2.1.202|255.255.255.0
+Leaf2|vlan2_any|10.2.1.254|255.255.255.0
+Leaf2|vlan4|10.4.1.202|255.255.255.0
+Leaf2|vlan4_any|10.4.1.254|255.255.255.0
+Leaf3|lo1|10.1.1.13|255.255.255.255
+Leaf3|eth1|192.168.1.5|255.255.255.254
+Leaf3|eth2|192.168.1.5|255.255.255.254
+Leaf3|eth5|10.110.1.1|255.255.255.254
+Leaf3|eth6|10.120.1.1|255.255.255.254
+Leaf3|eth7|10.130.1.1|255.255.255.254
+Leaf3|vlan5|10.5.1.203|255.255.255.0
+Leaf3|vlan5_any|10.5.1.254|255.255.255.0
+Client1|eth0|10.2.1.100|255.255.255.0
+Client2|eth0|10.3.1.100|255.255.255.0
+Client3|eth0|10.4.1.100|255.255.255.0
+Client4|eth0|10.5.1.100|255.255.255.0
+FW|lo1|10.1.1.100|255.255.255.252
+FW|eth1|203.0.113.1|255.255.255.254
+FW|eth2|10.110.1.0|255.255.255.254
+FW|eth3|10.120.1.0|255.255.255.254
+FW|eth4|10.130.1.0|255.255.255.254
+FW|tunnel11|172.16.11.1|255.255.255.252
+FW|tunnel12|172.16.12.1|255.255.255.252
+FW|tunnel13|172.16.13.1|255.255.255.252
+
+Fabric1
+|Device|Interface|IP Address|Subnet Mask
+|---|---|---|---|
+Spine1|lo1|10.1.2.1|255.255.255.255
+Spine1|eth1|192.168.1.0|255.255.255.254
+Spine1|eth2|192.168.1.2|255.255.255.254
+Spine1|eth3|192.168.1.4|255.255.255.254
+Spine2|lo1|10.1.2.2|255.255.255.255
+Spine2|eth1|192.168.2.0|255.255.255.254
+Spine2|eth2|192.168.2.2|255.255.255.254
+Spine2|eth3|192.168.2.4|255.255.255.254
+Leaf1|lo1|10.1.2.11|255.255.255.255
+Leaf1|eth1|192.168.1.1|255.255.255.254
+Leaf1|eth2|192.168.2.1|255.255.255.254
+Leaf1|vlan2|10.2.2.201|255.255.255.0
+Leaf1|vlan2_any|10.2.2.254|255.255.255.0
+Leaf1|vlan3|10.3.2.201|255.255.255.0
+Leaf1|vlan3_any|10.3.2.254|255.255.255.0
+Leaf2|lo1|10.1.2.12|255.255.255.255
+Leaf2|eth1|192.168.1.3|255.255.255.254
+Leaf2|eth2|192.168.2.3|255.255.255.254
+Leaf2|vlan2|10.2.2.202|255.255.255.0
+Leaf2|vlan2_any|10.2.2.254|255.255.255.0
+Leaf2|vlan4|10.4.2.202|255.255.255.0
+Leaf2|vlan4_any|10.4.2.254|255.255.255.0
+Leaf3|lo1|10.1.2.13|255.255.255.255
+Leaf3|eth1|192.168.1.5|255.255.255.254
+Leaf3|eth2|192.168.1.5|255.255.255.254
+Leaf3|eth5|10.110.2.1|255.255.255.254
+Leaf3|eth6|10.120.2.1|255.255.255.254
+Leaf3|eth7|10.130.2.1|255.255.255.254
+Leaf3|vlan5|10.5.2.203|255.255.255.0
+Leaf3|vlan5_any|10.5.2.254|255.255.255.0
+Client1|eth0|10.2.2.100|255.255.255.0
+Client2|eth0|10.3.2.100|255.255.255.0
+Client3|eth0|10.4.2.100|255.255.255.0
+Client4|eth0|10.5.2.100|255.255.255.0
+FW|lo1|10.1.2.100|255.255.255.252
+FW|eth1|203.0.113.2|255.255.255.254
+FW|eth2|10.110.2.0|255.255.255.254
+FW|eth3|10.120.2.0|255.255.255.254
+FW|eth4|10.130.2.0|255.255.255.254
+FW|tunnel11|172.16.11.2|255.255.255.252
+FW|tunnel12|172.16.12.2|255.255.255.252
+FW|tunnel13|172.16.13.2|255.255.255.252
+
+
+<details>
+
+<summary> Общая информация </summary>
+
+Virtual Extensible LAN (VXLAN) является технологией сетевой виртуализации, созданной для решения проблем масштабируемости в больших системах облачных вычислений. Она использует схожую с VLAN технику для MAC инкапсуляции Layer 2 Ethernet кадров в UDP-пакеты, порт 4789.</br>
+VXLAN является развитием усилий по стандартизации на оверлейном протоколе инкапсуляции. Он увеличивает масштабируемость до 16 миллионов логических сетей и позволяет сетям 2 уровня одновременно сосуществовать по IP-сетям. При этом multicast или unicast (с Head-End Replication) используются для передачи широковещательного трафика (broadcast, multicast и Unicast flood).</br>
+
+EVPN (Ethernet Virtual Private Network) — технология, которая обеспечивает связь уровней 2 и 3 между различными сетевыми сегментами.</br>
+Некоторые особенности EVPN:
+
+ - Поддержка передачи трафика второго уровня по множественным путям. Для этого достаточно указать точку назначения туннеля в IP заголовке внешнего пакета, и у транзитных коммутаторов появляется возможность использовать все возможные пути.
+ - Снижение уровня широковещательного трафика. Коммутаторы EVPN используют программный метод обучения MAC-адресов на базе обмена BGP сообщениями. После появления нового MAC-адреса на порту доступа выполняется синхронизация таблиц коммутации по всей сети.
+ - Маршрутизация между сетями в Active-Active режиме. Устройства ведут себя как распределённый маршрутизатор, каждая часть которого имеет один и тот же IP и MAC-адреса.
+ - Механизмы обмена не только MAC, но и IP информацией. Поэтому табличные данные и поведение распределённого маршрутизатора будут идентичны на всех его компонентах.
+
+Технология EVPN имеет несколько основных типов маршрутов. Сегодня более подробно остановимся на пятом типе.
+EVPN Route Type 5 называется IP Prefix Route. Это третий основной тип маршрута в EVPN после Type 2 (Host MAC/IP) и Type 3 (VTEP). Type 5 решает задачу объявления IP-подсетей в VXLAN-фабрике без привязки к конкретным MAC-адресам хостов.
+
+Назначение и назначение Type 5
+Основная задача — обеспечить L3-маршрутизацию между VNI (VXLAN Network Identifier) в дата-центровой фабрике. Type 5 используется для объявления целых IP-подсетей, которые доступны через определённый VTEP.
+
+Ключевые отличия от других типов:
+
+Type 2 анонсирует конкретные хосты (MAC + IP/32)
+
+Type 3 анонсирует VTEP-адреса (underlay)
+
+Type 5 анонсирует IP-подсети любого размера (/24, /16, /8)
+
+Структура Type 5 маршрута
+Формат маршрута строго определён RFC 7432 и EVPN-спецификациями:
+
+Route Type 5: IP Prefix Route</br>
+RD: Route Distinguisher</br>
+Ethtag: Ethernet Tag ID (обычно 0 для IP Prefix)</br>
+IP Prefix Length: длина префикса в битах</br>
+IP Prefix: сам IP-префикс</br>
+GW IP: Gateway IP (симметричная IRB маршрутизация)</br>
+
+Маршрут содержит:
+
+Route Distinguisher — уникальный идентификатор VRF/VNI</br>
+Ethernet Tag — идентификатор VNI (0 для IP Prefix)</br>
+Длина префикса — /24, /16 и т.д.</br>
+IP-префикс — агрегируемая подсеть</br>
+Route Target — для импорта/экспорта между VTEP</br>
+Gateway IP — IP-адрес шлюза подсети (симметричная IRB)</br>
+</details>
+
+### Выполнение:
+
+
+Произведем начальную настройку коммутаторов, в которой выполним команды конфигурирования адресного пространства, а так же настроим протокол динамической маршрутизации eBGP для обеспечения связаности лифов, которые будут анонсировать свой loopback. Первый клиент у нас находятся в сети 192.168.10.0/24, второй в сети 192.168.20.0/24, третий в сети 192.168.30.0/24, а четвертый в сети 192.168.40.0/24. Так же произведем настройку файерволла FW - настроим ему интерфейсы loopback, eth5, eth6:
+<details>
+
+<summary> Начальная настройка </summary>
+  
+#### Spine 1
+```
+hostname Spine1
+!
+spanning-tree mode mstp
+!
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 10.2.1.1/30
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 10.2.1.5/30
+!
+interface Ethernet3
+   mtu 9000
+   no switchport
+   ip address 10.2.1.9/30
+!
+interface Ethernet4
+!
+interface Ethernet5
+!
+interface Ethernet6
+!
+interface Ethernet7
+!
+interface Ethernet8
+!
+interface Loopback0
+   ip address 10.0.1.1/32
+!
+interface Management1
+!
+ip routing
+!
+peer-filter LEAF_PF
+   10 match as-range 65001-65003 result accept
+!
+router bgp 65000
+   router-id 10.0.1.1
+   maximum-paths 3 ecmp 3
+   bgp listen range 10.2.1.0/28 peer-group LEAF_NEIGHBOR peer-filter LEAF_PF
+   neighbor LEAF_NEIGHBOR peer group
+   neighbor LEAF_NEIGHBOR out-delay 0
+   neighbor LEAF_NEIGHBOR bfd
+   neighbor LEAF_NEIGHBOR timers 3 9
+   !
+   address-family ipv4
+      neighbor LEAF_NEIGHBOR activate
+      network 10.0.1.1/32
+!
+```
+#### Spine 2
+```
+hostname Spine2
+!
+spanning-tree mode mstp
+!
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 10.2.2.1/30
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 10.2.2.5/30
+!
+interface Ethernet3
+   mtu 9000
+   no switchport
+   ip address 10.2.2.9/30
+!
+interface Ethernet4
+!
+interface Ethernet5
+!
+interface Ethernet6
+!
+interface Ethernet7
+!
+interface Ethernet8
+!
+interface Loopback0
+   ip address 10.0.2.1/32
+!
+interface Management1
+!
+ip routing
+!
+peer-filter LEAF_PF
+   10 match as-range 65001-65003 result accept
+!
+router bgp 65000
+   router-id 10.0.2.1
+   maximum-paths 3 ecmp 3
+   bgp listen range 10.2.2.0/28 peer-group LEAF_NEIGHBOR peer-filter LEAF_PF
+   neighbor LEAF_NEIGHBOR peer group
+   neighbor LEAF_NEIGHBOR out-delay 0
+   neighbor LEAF_NEIGHBOR bfd
+   neighbor LEAF_NEIGHBOR timers 3 9
+   !
+   address-family ipv4
+      neighbor LEAF_NEIGHBOR activate
+      network 10.0.2.1/32
+!
+end
+
+```
+#### Leaf 1
+```
+hostname Leaf1
+!
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 10.2.1.2/30
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 10.2.2.2/30
+!
+interface Ethernet3
+   mtu 9000
+!
+interface Loopback0
+   ip address 10.1.1.1/32
+!
+ip routing
+!
+router bgp 65001
+   router-id 10.1.1.1
+   maximum-paths 2 ecmp 2
+   neighbor SPINE_NEIGHBOR peer group
+   neighbor SPINE_NEIGHBOR remote-as 65000
+   neighbor SPINE_NEIGHBOR out-delay 0
+   neighbor SPINE_NEIGHBOR bfd
+   neighbor SPINE_NEIGHBOR timers 3 9
+   neighbor 10.2.1.1 peer group SPINE_NEIGHBOR
+   neighbor 10.2.2.1 peer group SPINE_NEIGHBOR
+   !
+   address-family ipv4
+      neighbor SPINE_NEIGHBOR activate
+      network 10.1.1.1/32
+!
+```
+
+#### Leaf 2
+```
+hostname Leaf2
+!
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 10.2.1.6/30
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 10.2.2.6/30
+!
+interface Ethernet3
+   mtu 9000
+!
+interface Loopback0
+   ip address 10.1.2.1/32
+!
+ip routing
+!
+router bgp 65002
+   router-id 10.1.2.1
+   maximum-paths 2 ecmp 2
+   neighbor SPINE_NEIGHBOR peer group
+   neighbor SPINE_NEIGHBOR remote-as 65000
+   neighbor SPINE_NEIGHBOR out-delay 0
+   neighbor SPINE_NEIGHBOR bfd
+   neighbor SPINE_NEIGHBOR timers 3 9
+   neighbor 10.2.1.5 peer group SPINE_NEIGHBOR
+   neighbor 10.2.2.5 peer group SPINE_NEIGHBOR
+   !
+   address-family ipv4
+      neighbor SPINE_NEIGHBOR activate
+      network 10.1.2.1/32
+!
+```
+
+#### Leaf 3
+```
+hostname Leaf3
+!
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 10.2.1.10/30
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 10.2.2.10/30
+!
+interface Ethernet3
+   mtu 9000
+!
+interface Ethernet4
+   mtu 9000
+!
+interface Loopback0
+   ip address 10.1.3.1/32
+!
+ip routing
+!
+router bgp 65003
+   router-id 10.1.3.1
+   maximum-paths 2 ecmp 2
+   neighbor SPINE_NEIGHBOR peer group
+   neighbor SPINE_NEIGHBOR remote-as 65000
+   neighbor SPINE_NEIGHBOR out-delay 0
+   neighbor SPINE_NEIGHBOR bfd
+   neighbor SPINE_NEIGHBOR timers 3 9
+   neighbor 10.2.1.9 peer group SPINE_NEIGHBOR
+   neighbor 10.2.2.9 peer group SPINE_NEIGHBOR
+   !
+   address-family ipv4
+      neighbor SPINE_NEIGHBOR activate
+      network 10.1.3.1/32
+!
+```
+#### Client 1
+```
+VPCS> ip 192.168.10.101 255.255.255.0 192.168.10.254
+```
+#### Client 2
+```
+VPCS> ip 192.168.20.102 255.255.255.0 192.168.20.254
+```
+#### Client 3
+```
+VPCS> ip 192.168.30.103 255.255.255.0 192.168.30.254
+```
+#### Client 4
+```
+VPCS> ip 192.168.40.104 255.255.255.0 192.168.40.254
+```
+</details>
+
+Нам необходимо настроить сеть таким образом, чтобы клиенты находились в разных L2 сегментах(VLAN), но при этом могли обмениваться траффиком с клиентами из другого VLAN, но с определенными условиями. VLAN 10 с VLAN 30  и VLAN 20 с VLAN 40 маршрутизируется через фабрику, а между этими парами VLANов маршрутизация должна идти через файерволл. 
+
+Для организации такой сети мы будем использовать симметричную IRB-модель, в которой каждой паре VLANов будет определен VRF с транзитным VNI. Маршрутизация через файерволл мы будем осуществлять через RT-5.
+
+Итак, для начала настроим интерфейс VXLAN. Здесь мы указываем, что VTEP Source IP-адрес нужно брать с интерфейса Loopback0. Этот IP-адрес будет использоваться как внешний Source IP в VXLAN-пакетах. Далее мы задаем соответствие VLAN 10 к VNI 10010, VLAN 20 к VNI 10020, VLAN 30 к VNI 10030, а VLAN 40 к VNI 10040. Так же блокируем data-plane обучение VTEP от любых IP-адресов, кроме тех что разрешены EVPN control-plane (BGP). Так же опишем вланы в секции BGP.
+```
+interface Vxlan1
+   vxlan source-interface Loopback0
+   vxlan udp-port 4789
+   vxlan vlan ХХ vni 100ХХ
+   vxlan learn-restrict any
+!
+router bgp 6500X
+  vlan ХХ
+      rd auto
+      route-target both ХХ:100ХХ
+      redistribute learned
+   !
+!
+```
+
+Теперь настроим два VRF с транзитными VNI для каждой пары VLANов. При этом на Leaf 3, который соединен с файерволом настроим оба этих VRF. Это нужно сделать не только потому что клиенты находятся в разных VRF, но и потому в граничных лифах нам необходимо анонсировать маршруты со всех требуемых VLAN. Так же нужно в описании протокола BGP в секциях транзитных VRF сделать редистрибьюцию connected сетей для образования маршрутов RT-5:
+
+```
+vrf instance CON_VRFX
+!
+interface Vxlan1
+   vxlan vrf CON_VRFX vni 10X00
+!
+router bgp 6500X
+   vrf CON_VRFX
+      rd 10.1.X.1:X00
+      route-target import evpn X00:10X00
+      route-target export evpn X00:10X00
+      !
+      address-family ipv4
+         redistribute connected
+!
+```
+
+Далее настроим фильтрацию на лифе 3 для предотвращения трансляции маршрутов 2 типа файерволу. Будет отдавать ему только 5 тип, который уже включает в себя хостовые /32 маршруты типа 2:
+```
+ip prefix-list TYPE2_ROUTE
+   seq 10 permit 0.0.0.0/0 ge 32
+!
+route-map FW_ROUTES deny 10
+   match ip address prefix-list TYPE2_ROUTE
+!
+route-map FW_ROUTES permit 20
+!
+router bgp 65003
+   neighbor FW route-map FW_ROUTES out
+!
+```
+
+Затем настроим сам файервол FW. Включим маршрутизацию и построим BGP IPv4 соседство с Leaf 3 таким образом, что каждый линк будет соотвтествовть транзитной VRF на лифе. Так же передадим лифу, что файервол будет для его сетей гарантированным шлюзом по умолчанию:
+```
+ip routing
+!
+router bgp 65500
+   router-id 10.10.1.1
+   neighbor FABRIC peer group
+   neighbor FABRIC remote-as 65003
+   neighbor FABRIC bfd
+   neighbor FABRIC timers 3 9
+   neighbor FABRIC default-originate
+   neighbor 10.100.1.2 peer group FABRIC
+   neighbor 10.200.1.2 peer group FABRIC
+   !
+   address-family ipv4
+      neighbor 10.100.1.2 activate
+      neighbor 10.200.1.2 activate
+!
+```
+
+Таким образом, итоговые конфигурации коммутаторов будут выглядеть так:
+
+<details>
+<summary> Итоговая конфигурация </summary>
+  
+#### Spine 1
+```
+service routing protocols model multi-agent
+!
+hostname Spine1
+!
+spanning-tree mode mstp
+!
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 10.2.1.1/30
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 10.2.1.5/30
+!
+interface Ethernet3
+   mtu 9000
+   no switchport
+   ip address 10.2.1.9/30
+!
+interface Loopback0
+   ip address 10.0.1.1/32
+!
+ip routing
+!
+peer-filter LEAF_PF
+   10 match as-range 65001-65003 result accept
+!
+router bgp 65000
+   router-id 10.0.1.1
+   maximum-paths 3 ecmp 3
+   bgp listen range 10.2.1.0/28 peer-group LEAF_NEIGHBOR peer-filter LEAF_PF
+   bgp listen range 10.1.0.0/22 peer-group LEAF_NEIGHBOR_VXLAN peer-filter LEAF_PF
+   neighbor LEAF_NEIGHBOR peer group
+   neighbor LEAF_NEIGHBOR out-delay 0
+   neighbor LEAF_NEIGHBOR bfd
+   neighbor LEAF_NEIGHBOR timers 3 9
+   neighbor LEAF_NEIGHBOR_VXLAN peer group
+   neighbor LEAF_NEIGHBOR_VXLAN next-hop-unchanged
+   neighbor LEAF_NEIGHBOR_VXLAN update-source Loopback0
+   neighbor LEAF_NEIGHBOR_VXLAN ebgp-multihop 3
+   neighbor LEAF_NEIGHBOR_VXLAN send-community extended
+   !
+   address-family evpn
+      neighbor LEAF_NEIGHBOR_VXLAN activate
+   !
+   address-family ipv4
+      neighbor LEAF_NEIGHBOR activate
+      network 10.0.1.1/32
+!
+end
+
+```
+  
+#### Spine 2
+```
+service routing protocols model multi-agent
+!
+hostname Spine2
+!
+spanning-tree mode mstp
+!
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 10.2.2.1/30
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 10.2.2.5/30
+!
+interface Ethernet3
+   mtu 9000
+   no switchport
+   ip address 10.2.2.9/30
+!
+interface Loopback0
+   ip address 10.0.2.1/32
+!
+ip routing
+!
+peer-filter LEAF_PF
+   10 match as-range 65001-65003 result accept
+!
+router bgp 65000
+   router-id 10.0.2.1
+   maximum-paths 3 ecmp 3
+   bgp listen range 10.2.2.0/28 peer-group LEAF_NEIGHBOR peer-filter LEAF_PF
+   bgp listen range 10.1.0.0/22 peer-group LEAF_NEIGHBOR_VXLAN peer-filter LEAF_PF
+   neighbor LEAF_NEIGHBOR peer group
+   neighbor LEAF_NEIGHBOR out-delay 0
+   neighbor LEAF_NEIGHBOR bfd
+   neighbor LEAF_NEIGHBOR timers 3 9
+   neighbor LEAF_NEIGHBOR_VXLAN peer group
+   neighbor LEAF_NEIGHBOR_VXLAN next-hop-unchanged
+   neighbor LEAF_NEIGHBOR_VXLAN update-source Loopback0
+   neighbor LEAF_NEIGHBOR_VXLAN ebgp-multihop 3
+   neighbor LEAF_NEIGHBOR_VXLAN send-community extended
+   !
+   address-family evpn
+      neighbor LEAF_NEIGHBOR_VXLAN activate
+   !
+   address-family ipv4
+      neighbor LEAF_NEIGHBOR activate
+      network 10.0.2.1/32
+!
+end
+
+
+```
+  
+#### Leaf 1
+```
+
+service routing protocols model multi-agent
+!
+hostname Leaf1
+!
+vlan 10
+   name L3_NET1
+!
+vrf instance CON_VRF1
+!
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 10.2.1.2/30
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 10.2.2.2/30
+!
+interface Ethernet3
+   mtu 9000
+   switchport access vlan 10
+!
+interface Ethernet4
+!
+interface Ethernet5
+!
+interface Ethernet6
+!
+interface Ethernet7
+!
+interface Ethernet8
+!
+interface Loopback0
+   ip address 10.1.1.1/32
+!
+interface Management1
+!
+interface Vlan10
+   vrf CON_VRF1
+   ip address 192.168.10.201/24
+   ip virtual-router address 192.168.10.254/24
+!
+interface Vxlan1
+   vxlan source-interface Loopback0
+   vxlan udp-port 4789
+   vxlan vlan 10 vni 10010
+   vxlan vrf CON_VRF1 vni 10100
+   vxlan learn-restrict any
+!
+ip virtual-router mac-address 12:00:00:00:00:00
+!
+ip routing
+ip routing vrf CON_VRF1
+!
+router bgp 65001
+   router-id 10.1.1.1
+   maximum-paths 2 ecmp 2
+   neighbor SPINE_NEIGHBOR peer group
+   neighbor SPINE_NEIGHBOR remote-as 65000
+   neighbor SPINE_NEIGHBOR out-delay 0
+   neighbor SPINE_NEIGHBOR bfd
+   neighbor SPINE_NEIGHBOR timers 3 9
+   neighbor SPINE_NEIGHBOR_VXLAN peer group
+   neighbor SPINE_NEIGHBOR_VXLAN remote-as 65000
+   neighbor SPINE_NEIGHBOR_VXLAN update-source Loopback0
+   neighbor SPINE_NEIGHBOR_VXLAN ebgp-multihop 3
+   neighbor SPINE_NEIGHBOR_VXLAN send-community extended
+   neighbor 10.0.1.1 peer group SPINE_NEIGHBOR_VXLAN
+   neighbor 10.0.2.1 peer group SPINE_NEIGHBOR_VXLAN
+   neighbor 10.2.1.1 peer group SPINE_NEIGHBOR
+   neighbor 10.2.2.1 peer group SPINE_NEIGHBOR
+   !
+   vlan 10
+      rd auto
+      route-target both 10:10010
+      redistribute learned
+   !
+   address-family evpn
+      neighbor SPINE_NEIGHBOR_VXLAN activate
+   !
+   address-family ipv4
+      neighbor SPINE_NEIGHBOR activate
+      network 10.1.1.1/32
+   !
+   vrf CON_VRF1
+      rd 10.1.1.1:100
+      route-target import evpn 100:10100
+      route-target export evpn 100:10100
+      !
+      address-family ipv4
+         redistribute connected
+!
+end
+
+
+
+```
+
+#### Leaf 2
+```
+
+service routing protocols model multi-agent
+!
+hostname Leaf2
+!
+vlan 20
+   name L3_NET2
+!
+vrf instance CON_VRF2
+!
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 10.2.1.6/30
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 10.2.2.6/30
+!
+interface Ethernet3
+   mtu 9000
+   switchport access vlan 20
+!
+interface Ethernet4
+!
+interface Ethernet5
+!
+interface Ethernet6
+!
+interface Ethernet7
+!
+interface Ethernet8
+!
+interface Loopback0
+   ip address 10.1.2.1/32
+!
+interface Management1
+!
+interface Vlan20
+   vrf CON_VRF2
+   ip address 192.168.20.202/24
+   ip virtual-router address 192.168.20.254/24
+!
+interface Vxlan1
+   vxlan source-interface Loopback0
+   vxlan udp-port 4789
+   vxlan vlan 20 vni 10020
+   vxlan vrf CON_VRF2 vni 10200
+   vxlan learn-restrict any
+!
+ip virtual-router mac-address 12:00:00:00:00:00
+!
+ip routing
+ip routing vrf CON_VRF2
+!
+router bgp 65002
+   router-id 10.1.2.1
+   maximum-paths 2 ecmp 2
+   neighbor SPINE_NEIGHBOR peer group
+   neighbor SPINE_NEIGHBOR remote-as 65000
+   neighbor SPINE_NEIGHBOR out-delay 0
+   neighbor SPINE_NEIGHBOR bfd
+   neighbor SPINE_NEIGHBOR timers 3 9
+   neighbor SPINE_NEIGHBOR_VXLAN peer group
+   neighbor SPINE_NEIGHBOR_VXLAN remote-as 65000
+   neighbor SPINE_NEIGHBOR_VXLAN update-source Loopback0
+   neighbor SPINE_NEIGHBOR_VXLAN ebgp-multihop 3
+   neighbor SPINE_NEIGHBOR_VXLAN send-community extended
+   neighbor 10.0.1.1 peer group SPINE_NEIGHBOR_VXLAN
+   neighbor 10.0.2.1 peer group SPINE_NEIGHBOR_VXLAN
+   neighbor 10.2.1.5 peer group SPINE_NEIGHBOR
+   neighbor 10.2.2.5 peer group SPINE_NEIGHBOR
+   !
+   vlan 20
+      rd auto
+      route-target both 20:10020
+      redistribute learned
+   !
+   address-family evpn
+      neighbor SPINE_NEIGHBOR_VXLAN activate
+   !
+   address-family ipv4
+      neighbor SPINE_NEIGHBOR activate
+      network 10.1.2.1/32
+   !
+   vrf CON_VRF2
+      rd 10.1.2.1:200
+      route-target import evpn 200:10200
+      route-target export evpn 200:10200
+      !
+      address-family ipv4
+         redistribute connected
+!
+end
+
+```
+
+#### Leaf 3
+```
+service routing protocols model multi-agent
+!
+hostname Leaf3
+!
+spanning-tree mode mstp
+!
+vlan 30
+   name L3_NET3
+!
+vlan 40
+   name L3_NET4
+!
+vrf instance CON_VRF1
+!
+vrf instance CON_VRF2
+!
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 10.2.1.10/30
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 10.2.2.10/30
+!
+interface Ethernet3
+   mtu 9000
+   switchport access vlan 30
+!
+interface Ethernet4
+   mtu 9000
+   switchport access vlan 40
+!
+interface Ethernet5
+   mtu 9000
+   no switchport
+   vrf CON_VRF1
+   ip address 10.100.1.2/30
+!
+interface Ethernet6
+   mtu 9000
+   no switchport
+   vrf CON_VRF2
+   ip address 10.200.1.2/30
+!
+interface Ethernet7
+!
+interface Ethernet8
+!
+interface Loopback0
+   ip address 10.1.3.1/32
+!
+interface Management1
+!
+interface Vlan30
+   vrf CON_VRF1
+   ip address 192.168.30.203/24
+   ip virtual-router address 192.168.30.254/24
+!
+interface Vlan40
+   vrf CON_VRF2
+   ip address 192.168.40.204/24
+   ip virtual-router address 192.168.40.254/24
+!
+interface Vxlan1
+   vxlan source-interface Loopback0
+   vxlan udp-port 4789
+   vxlan vlan 30 vni 10030
+   vxlan vlan 40 vni 10040
+   vxlan vrf CON_VRF1 vni 10100
+   vxlan vrf CON_VRF2 vni 10200
+   vxlan learn-restrict any
+!
+ip virtual-router mac-address 12:00:00:00:00:00
+!
+ip routing
+ip routing vrf CON_VRF1
+ip routing vrf CON_VRF2
+!
+ip prefix-list TYPE2_ROUTE
+   seq 10 permit 0.0.0.0/0 ge 32
+!
+route-map FW_ROUTES deny 10
+   match ip address prefix-list TYPE2_ROUTE
+!
+route-map FW_ROUTES permit 20
+!
+router bgp 65003
+   router-id 10.1.3.1
+   maximum-paths 2 ecmp 2
+   neighbor FW peer group
+   neighbor FW remote-as 65500
+   neighbor FW bfd
+   neighbor FW allowas-in 3
+   neighbor FW timers 3 9
+   neighbor FW route-map FW_ROUTES out
+   neighbor SPINE_NEIGHBOR peer group
+   neighbor SPINE_NEIGHBOR remote-as 65000
+   neighbor SPINE_NEIGHBOR out-delay 0
+   neighbor SPINE_NEIGHBOR bfd
+   neighbor SPINE_NEIGHBOR timers 3 9
+   neighbor SPINE_NEIGHBOR_VXLAN peer group
+   neighbor SPINE_NEIGHBOR_VXLAN remote-as 65000
+   neighbor SPINE_NEIGHBOR_VXLAN update-source Loopback0
+   neighbor SPINE_NEIGHBOR_VXLAN ebgp-multihop 3
+   neighbor SPINE_NEIGHBOR_VXLAN send-community extended
+   neighbor 10.0.1.1 peer group SPINE_NEIGHBOR_VXLAN
+   neighbor 10.0.2.1 peer group SPINE_NEIGHBOR_VXLAN
+   neighbor 10.2.1.9 peer group SPINE_NEIGHBOR
+   neighbor 10.2.2.9 peer group SPINE_NEIGHBOR
+   !
+   vlan 30
+      rd auto
+      route-target both 30:10030
+      redistribute learned
+   !
+   vlan 40
+      rd auto
+      route-target both 40:10040
+      redistribute learned
+   !
+   address-family evpn
+      neighbor SPINE_NEIGHBOR_VXLAN activate
+   !
+   address-family ipv4
+      neighbor FW activate
+      neighbor FW next-hop address-family ipv6 originate
+      neighbor SPINE_NEIGHBOR activate
+      network 10.1.3.1/32
+   !
+   vrf CON_VRF1
+      rd 10.1.3.1:100
+      route-target import evpn 100:10100
+      route-target export evpn 100:10100
+      router-id 10.1.3.1
+      neighbor 10.100.1.1 peer group FW
+      !
+      address-family ipv4
+         redistribute connected
+   !
+   vrf CON_VRF2
+      rd 10.1.3.1:200
+      route-target import evpn 200:10200
+      route-target export evpn 200:10200
+      router-id 10.1.3.1
+      neighbor 10.200.1.1 peer group FW
+      !
+      address-family ipv4
+         redistribute connected
+!
+end
+
+
+```
+
+#### FW
+```
+hostname FW
+!
+spanning-tree mode mstp
+!
+interface Ethernet1
+   mtu 9000
+   no switchport
+   ip address 10.100.1.1/30
+!
+interface Ethernet2
+   mtu 9000
+   no switchport
+   ip address 10.200.1.1/30
+!
+interface Ethernet3
+!
+interface Ethernet4
+!
+interface Ethernet5
+!
+interface Ethernet6
+!
+interface Ethernet7
+!
+interface Ethernet8
+!
+interface Loopback0
+   ip address 10.10.1.1/32
+!
+interface Management1
+!
+ip routing
+!
+router bgp 65500
+   router-id 10.10.1.1
+   neighbor FABRIC peer group
+   neighbor FABRIC remote-as 65003
+   neighbor FABRIC bfd
+   neighbor FABRIC timers 3 9
+   neighbor FABRIC default-originate
+   neighbor 10.100.1.2 peer group FABRIC
+   neighbor 10.200.1.2 peer group FABRIC
+   !
+   address-family ipv4
+      neighbor 10.100.1.2 activate
+      neighbor 10.200.1.2 activate
+!
+end
+
+```
+</details>
+
+После настройки на сетевых устройствах протокола маршрутизации проверим результаты.
+
+ Пробуем с Client1 "достучаться" до Client2(VLA20), Client3(VLA30) и до Client4(VLAN40):
+ #### Clients
+ ![pingl2cl1.png](ping8.png)
+
+ Как видим Client1 видит Client3, а так же Client2 и Client4, с которыми имеет связь через файервол.
+
+
+
+ 
+ Теперь посмотрим EVPN маршруты типа 5 на каждом leaf-коммутаторе:
+ 
+ <details>
+ <summary> Type 5 </summary>
+ 
+
+ #### Leaf 1
+ ```
+
+Leaf1#sh bgp evpn route-type ip-prefix ?
+  A.B.C.D/E          IPv4 address prefix
+  A:B:C:D:E:F:G:H/I  IPv6 address prefix
+  ipv4               Limit address family to IPv4
+  ipv6               Limit address family to IPv6
+
+Leaf1#sh bgp evpn route-type ip-prefix ipv4
+BGP routing table information for VRF default
+Router identifier 10.1.1.1, local AS number 65001
+Route status codes: * - valid, > - active, S - Stale, E - ECMP head, e - ECMP
+                    c - Contributing to ECMP, % - Pending BGP convergence
+Origin codes: i - IGP, e - EGP, ? - incomplete
+AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Link Local Nexthop
+
+          Network                Next Hop              Metric  LocPref Weight  Path
+ * >Ec    RD: 10.1.3.1:100 ip-prefix 0.0.0.0/0
+                                 10.1.3.1              -       100     0       65000 65003 65500 ?
+ *  ec    RD: 10.1.3.1:100 ip-prefix 0.0.0.0/0
+                                 10.1.3.1              -       100     0       65000 65003 65500 ?
+ * >Ec    RD: 10.1.3.1:200 ip-prefix 0.0.0.0/0
+                                 10.1.3.1              -       100     0       65000 65003 65500 ?
+ *  ec    RD: 10.1.3.1:200 ip-prefix 0.0.0.0/0
+                                 10.1.3.1              -       100     0       65000 65003 65500 ?
+ * >Ec    RD: 10.1.3.1:100 ip-prefix 10.100.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:100 ip-prefix 10.100.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >Ec    RD: 10.1.3.1:200 ip-prefix 10.100.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ *  ec    RD: 10.1.3.1:200 ip-prefix 10.100.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ * >Ec    RD: 10.1.3.1:100 ip-prefix 10.200.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ *  ec    RD: 10.1.3.1:100 ip-prefix 10.200.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ * >Ec    RD: 10.1.3.1:200 ip-prefix 10.200.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:200 ip-prefix 10.200.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >      RD: 10.1.1.1:100 ip-prefix 192.168.10.0/24
+                                 -                     -       -       0       i
+ * >Ec    RD: 10.1.2.1:200 ip-prefix 192.168.20.0/24
+                                 10.1.2.1              -       100     0       65000 65002 i
+ *  ec    RD: 10.1.2.1:200 ip-prefix 192.168.20.0/24
+                                 10.1.2.1              -       100     0       65000 65002 i
+ * >Ec    RD: 10.1.3.1:100 ip-prefix 192.168.30.0/24
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:100 ip-prefix 192.168.30.0/24
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >Ec    RD: 10.1.3.1:200 ip-prefix 192.168.30.0/24
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ *  ec    RD: 10.1.3.1:200 ip-prefix 192.168.30.0/24
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ * >Ec    RD: 10.1.3.1:100 ip-prefix 192.168.40.0/24
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ *  ec    RD: 10.1.3.1:100 ip-prefix 192.168.40.0/24
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ * >Ec    RD: 10.1.3.1:200 ip-prefix 192.168.40.0/24
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:200 ip-prefix 192.168.40.0/24
+                                 10.1.3.1              -       100     0       65000 65003 i
+
+ ```
+
+ #### Leaf 2
+ ```
+
+Leaf2#sh bgp evpn route-type ip-prefix ipv4
+BGP routing table information for VRF default
+Router identifier 10.1.2.1, local AS number 65002
+Route status codes: * - valid, > - active, S - Stale, E - ECMP head, e - ECMP
+                    c - Contributing to ECMP, % - Pending BGP convergence
+Origin codes: i - IGP, e - EGP, ? - incomplete
+AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Link Local Nexthop
+
+          Network                Next Hop              Metric  LocPref Weight  Path
+ * >Ec    RD: 10.1.3.1:100 ip-prefix 0.0.0.0/0
+                                 10.1.3.1              -       100     0       65000 65003 65500 ?
+ *  ec    RD: 10.1.3.1:100 ip-prefix 0.0.0.0/0
+                                 10.1.3.1              -       100     0       65000 65003 65500 ?
+ * >Ec    RD: 10.1.3.1:200 ip-prefix 0.0.0.0/0
+                                 10.1.3.1              -       100     0       65000 65003 65500 ?
+ *  ec    RD: 10.1.3.1:200 ip-prefix 0.0.0.0/0
+                                 10.1.3.1              -       100     0       65000 65003 65500 ?
+ * >Ec    RD: 10.1.3.1:100 ip-prefix 10.100.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:100 ip-prefix 10.100.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >Ec    RD: 10.1.3.1:200 ip-prefix 10.100.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ *  ec    RD: 10.1.3.1:200 ip-prefix 10.100.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ * >Ec    RD: 10.1.3.1:100 ip-prefix 10.200.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ *  ec    RD: 10.1.3.1:100 ip-prefix 10.200.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ * >Ec    RD: 10.1.3.1:200 ip-prefix 10.200.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:200 ip-prefix 10.200.1.0/30
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >Ec    RD: 10.1.1.1:100 ip-prefix 192.168.10.0/24
+                                 10.1.1.1              -       100     0       65000 65001 i
+ *  ec    RD: 10.1.1.1:100 ip-prefix 192.168.10.0/24
+                                 10.1.1.1              -       100     0       65000 65001 i
+ * >      RD: 10.1.2.1:200 ip-prefix 192.168.20.0/24
+                                 -                     -       -       0       i
+ * >Ec    RD: 10.1.3.1:100 ip-prefix 192.168.30.0/24
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:100 ip-prefix 192.168.30.0/24
+                                 10.1.3.1              -       100     0       65000 65003 i
+ * >Ec    RD: 10.1.3.1:200 ip-prefix 192.168.30.0/24
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ *  ec    RD: 10.1.3.1:200 ip-prefix 192.168.30.0/24
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ * >Ec    RD: 10.1.3.1:100 ip-prefix 192.168.40.0/24
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ *  ec    RD: 10.1.3.1:100 ip-prefix 192.168.40.0/24
+                                 10.1.3.1              -       100     0       65000 65003 65500 65003 i
+ * >Ec    RD: 10.1.3.1:200 ip-prefix 192.168.40.0/24
+                                 10.1.3.1              -       100     0       65000 65003 i
+ *  ec    RD: 10.1.3.1:200 ip-prefix 192.168.40.0/24
+                                 10.1.3.1              -       100     0       65000 65003 i
+
+   
+ ```
+
+ #### Leaf 3
+ ```
+
+Leaf3#sh bgp evpn route-type ip-prefix ipv4
+BGP routing table information for VRF default
+Router identifier 10.1.3.1, local AS number 65003
+Route status codes: * - valid, > - active, S - Stale, E - ECMP head, e - ECMP
+                    c - Contributing to ECMP, % - Pending BGP convergence
+Origin codes: i - IGP, e - EGP, ? - incomplete
+AS Path Attributes: Or-ID - Originator ID, C-LST - Cluster List, LL Nexthop - Link Local Nexthop
+
+          Network                Next Hop              Metric  LocPref Weight  Path
+ * >      RD: 10.1.3.1:100 ip-prefix 0.0.0.0/0
+                                 -                     -       100     0       65500 ?
+ * >      RD: 10.1.3.1:200 ip-prefix 0.0.0.0/0
+                                 -                     -       100     0       65500 ?
+ * >      RD: 10.1.3.1:100 ip-prefix 10.100.1.0/30
+                                 -                     -       -       0       i
+ * >      RD: 10.1.3.1:200 ip-prefix 10.100.1.0/30
+                                 -                     -       100     0       65500 65003 i
+ * >      RD: 10.1.3.1:100 ip-prefix 10.200.1.0/30
+                                 -                     -       100     0       65500 65003 i
+ * >      RD: 10.1.3.1:200 ip-prefix 10.200.1.0/30
+                                 -                     -       -       0       i
+ * >Ec    RD: 10.1.1.1:100 ip-prefix 192.168.10.0/24
+                                 10.1.1.1              -       100     0       65000 65001 i
+ *  ec    RD: 10.1.1.1:100 ip-prefix 192.168.10.0/24
+                                 10.1.1.1              -       100     0       65000 65001 i
+ * >      RD: 10.1.3.1:200 ip-prefix 192.168.10.0/24
+                                 -                     -       100     0       65500 65003 65000 65001 i
+ * >Ec    RD: 10.1.2.1:200 ip-prefix 192.168.20.0/24
+                                 10.1.2.1              -       100     0       65000 65002 i
+ *  ec    RD: 10.1.2.1:200 ip-prefix 192.168.20.0/24
+                                 10.1.2.1              -       100     0       65000 65002 i
+ * >      RD: 10.1.3.1:100 ip-prefix 192.168.20.0/24
+                                 -                     -       100     0       65500 65003 65000 65002 i
+ * >      RD: 10.1.3.1:100 ip-prefix 192.168.30.0/24
+                                 -                     -       -       0       i
+ * >      RD: 10.1.3.1:200 ip-prefix 192.168.30.0/24
+                                 -                     -       100     0       65500 65003 i
+ * >      RD: 10.1.3.1:100 ip-prefix 192.168.40.0/24
+                                 -                     -       100     0       65500 65003 i
+ * >      RD: 10.1.3.1:200 ip-prefix 192.168.40.0/24
+                                 -                     -       -       0       i
+
+   
+ ```
+
+</details>
+Как видим, присутствуют анонсы всех клиентских сетей, так же используется протокол ECMP. Так же видно, что всем устройствам прилетел маршрут по умолчанию(по два на кажды VRF с транзитным VNI, так как маршрутизация идёт через каждый из спайнов).</br>
+</br>
+
+Проверим сессию BGP и маршрутную информацию FW:
+
+ #### FW
+ ```
+FW#sh bgp summary
+BGP summary information for VRF default
+Router identifier 10.10.1.1, local AS number 65500
+Neighbor            AS Session State AFI/SAFI                AFI/SAFI State   NLRI Rcd   NLRI Acc
+---------- ----------- ------------- ----------------------- -------------- ---------- ----------
+10.100.1.2       65003 Established   IPv4 Unicast            Negotiated              3          3
+10.200.1.2       65003 Established   IPv4 Unicast            Negotiated              3          3
+
+FW#sh ip route
+
+VRF: default
+Codes: C - connected, S - static, K - kernel,
+       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
+       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
+       N2 - OSPF NSSA external type2, B - Other BGP Routes,
+       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
+       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
+       A O - OSPF Summary, NG - Nexthop Group Static Route,
+       V - VXLAN Control Service, M - Martian,
+       DH - DHCP client installed default route,
+       DP - Dynamic Policy Route, L - VRF Leaked,
+       G  - gRIBI, RC - Route Cache Route
+
+Gateway of last resort is not set
+
+ C        10.10.1.1/32 is directly connected, Loopback0
+ C        10.100.1.0/30 is directly connected, Ethernet1
+ C        10.200.1.0/30 is directly connected, Ethernet2
+ B E      192.168.10.0/24 [200/0] via 10.100.1.2, Ethernet1
+ B E      192.168.20.0/24 [200/0] via 10.200.1.2, Ethernet2
+ B E      192.168.30.0/24 [200/0] via 10.100.1.2, Ethernet1
+ B E      192.168.40.0/24 [200/0] via 10.200.1.2, Ethernet2
+
+ ```
+
+Как видим, на файервол "прилетели" все RT-5 маршруты, а маршрутов второго типа нет, так как они были отфильтрованы на Leaf 3.</br>
+</br>
+
+Так же посмотрим маршруты в транзитных VRF на всех Leaf фабрики:
+
+ #### Leaf 1
+ ```
+Leaf1#show ip route vrf CON_VRF1
+
+VRF: CON_VRF1
+Codes: C - connected, S - static, K - kernel,
+       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
+       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
+       N2 - OSPF NSSA external type2, B - Other BGP Routes,
+       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
+       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
+       A O - OSPF Summary, NG - Nexthop Group Static Route,
+       V - VXLAN Control Service, M - Martian,
+       DH - DHCP client installed default route,
+       DP - Dynamic Policy Route, L - VRF Leaked,
+       G  - gRIBI, RC - Route Cache Route
+
+Gateway of last resort:
+ B E      0.0.0.0/0 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
+
+ B E      10.100.1.0/30 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
+ B E      10.200.1.0/30 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
+ C        192.168.10.0/24 is directly connected, Vlan10
+ B E      192.168.30.103/32 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
+ B E      192.168.30.0/24 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
+ B E      192.168.40.0/24 [200/0] via VTEP 10.1.3.1 VNI 10100 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
+
+ ```
+
+#### Leaf 2
+ ```
+Leaf2#show ip route vrf CON_VRF2
+
+VRF: CON_VRF2
+Codes: C - connected, S - static, K - kernel,
+       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
+       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
+       N2 - OSPF NSSA external type2, B - Other BGP Routes,
+       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
+       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
+       A O - OSPF Summary, NG - Nexthop Group Static Route,
+       V - VXLAN Control Service, M - Martian,
+       DH - DHCP client installed default route,
+       DP - Dynamic Policy Route, L - VRF Leaked,
+       G  - gRIBI, RC - Route Cache Route
+
+Gateway of last resort:
+ B E      0.0.0.0/0 [200/0] via VTEP 10.1.3.1 VNI 10200 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
+
+ B E      10.100.1.0/30 [200/0] via VTEP 10.1.3.1 VNI 10200 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
+ B E      10.200.1.0/30 [200/0] via VTEP 10.1.3.1 VNI 10200 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
+ C        192.168.20.0/24 is directly connected, Vlan20
+ B E      192.168.30.0/24 [200/0] via VTEP 10.1.3.1 VNI 10200 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
+ B E      192.168.40.104/32 [200/0] via VTEP 10.1.3.1 VNI 10200 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
+ B E      192.168.40.0/24 [200/0] via VTEP 10.1.3.1 VNI 10200 router-mac 50:00:00:15:f4:e8 local-interface Vxlan1
+
+
+```
+
+ #### Leaf 3
+ ```
+Leaf3#show ip route vrf CON_VRF1
+
+VRF: CON_VRF1
+Codes: C - connected, S - static, K - kernel,
+       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
+       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
+       N2 - OSPF NSSA external type2, B - Other BGP Routes,
+       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
+       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
+       A O - OSPF Summary, NG - Nexthop Group Static Route,
+       V - VXLAN Control Service, M - Martian,
+       DH - DHCP client installed default route,
+       DP - Dynamic Policy Route, L - VRF Leaked,
+       G  - gRIBI, RC - Route Cache Route
+
+Gateway of last resort:
+ B E      0.0.0.0/0 [200/0] via 10.100.1.1, Ethernet5
+
+ C        10.100.1.0/30 is directly connected, Ethernet5
+ B E      10.200.1.0/30 [200/0] via 10.100.1.1, Ethernet5
+ B E      192.168.10.101/32 [200/0] via VTEP 10.1.1.1 VNI 10100 router-mac 50:00:00:d7:ee:0b local-interface Vxlan1
+ B E      192.168.10.0/24 [200/0] via VTEP 10.1.1.1 VNI 10100 router-mac 50:00:00:d7:ee:0b local-interface Vxlan1
+ B E      192.168.20.0/24 [200/0] via 10.100.1.1, Ethernet5
+ C        192.168.30.0/24 is directly connected, Vlan30
+ B E      192.168.40.0/24 [200/0] via 10.100.1.1, Ethernet5
+
+Leaf3#show ip route vrf CON_VRF2
+
+VRF: CON_VRF2
+Codes: C - connected, S - static, K - kernel,
+       O - OSPF, IA - OSPF inter area, E1 - OSPF external type 1,
+       E2 - OSPF external type 2, N1 - OSPF NSSA external type 1,
+       N2 - OSPF NSSA external type2, B - Other BGP Routes,
+       B I - iBGP, B E - eBGP, R - RIP, I L1 - IS-IS level 1,
+       I L2 - IS-IS level 2, O3 - OSPFv3, A B - BGP Aggregate,
+       A O - OSPF Summary, NG - Nexthop Group Static Route,
+       V - VXLAN Control Service, M - Martian,
+       DH - DHCP client installed default route,
+       DP - Dynamic Policy Route, L - VRF Leaked,
+       G  - gRIBI, RC - Route Cache Route
+
+Gateway of last resort:
+ B E      0.0.0.0/0 [200/0] via 10.200.1.1, Ethernet6
+
+ B E      10.100.1.0/30 [200/0] via 10.200.1.1, Ethernet6
+ C        10.200.1.0/30 is directly connected, Ethernet6
+ B E      192.168.10.0/24 [200/0] via 10.200.1.1, Ethernet6
+ B E      192.168.20.102/32 [200/0] via VTEP 10.1.2.1 VNI 10200 router-mac 50:00:00:d5:5d:c0 local-interface Vxlan1
+ B E      192.168.20.0/24 [200/0] via VTEP 10.1.2.1 VNI 10200 router-mac 50:00:00:d5:5d:c0 local-interface Vxlan1
+ B E      192.168.30.0/24 [200/0] via 10.200.1.1, Ethernet6
+ C        192.168.40.0/24 is directly connected, Vlan40
+
+ ```
+ Видно, что везде присутствует маршрут по умолчанию, анонсятся маршруты пятого типа, а так же неотфильтрованные хостовые маршруты второго типа.
+
+</br>
+ 
