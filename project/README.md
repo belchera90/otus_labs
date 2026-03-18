@@ -947,8 +947,6 @@ ip 10.5.1.100 255.255.255.0 10.5.1.254
 ```
 </details>
 
-<details>
-
 ### ЦОД 2
 <details>
 <summary> Spines </summary>
