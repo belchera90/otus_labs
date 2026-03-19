@@ -21,11 +21,11 @@
 
 ## Используемые технологии:
 
-- Underlay: iBGP, eBGP, ECMP.
-- Overlay: VXLAN, EVPN, GRE over IPsec.
-- Мультитенантность: VRF (CON_VRF1, CON_VRF2, CON_VRF3), Route Distinguisher, Route Target.
+- Underlay: iBGP, ECMP.
+- Overlay: VXLAN, EVPN.
+- Мультитенантность: VRF (CON_VRF1, CON_VRF2, CON_VRF3), Route Distinguisher, Route Target, GRE over IPsec, туннели GRE для изоляции VRF.
 - Мультихоминг: EVPN Ethernet Segment (ESI), LACP.
-- Взаимодействие между фабриками: VRF-to-VRF на FireWall, туннели GRE для изоляции VRF.
+- Взаимодействие между фабриками: VRF-to-VRF на FireWall, eBGP, GRE over IPsec.
 - Платформа: Arista EOS (vEOS-lab).
 
 ## Топология сети:
